@@ -6,6 +6,8 @@ use Aliziodev\Singapay\Auth\RequestSigner;
 use Aliziodev\Singapay\Enums\WebhookType;
 use Aliziodev\Singapay\Events;
 use Aliziodev\Singapay\Events\WebhookReceived;
+use Aliziodev\Singapay\Facades\SingaPay;
+use Aliziodev\Singapay\Models\WebhookEvent;
 use Aliziodev\Singapay\Testing\Concerns\InteractsWithSingaPay;
 use Aliziodev\Singapay\Tests\TestCase;
 use Carbon\CarbonImmutable;
@@ -192,6 +194,90 @@ it('still accepts client-secret-signed deliveries when an hmac key is configured
         'X-Timestamp' => $timestamp,
         'X-Signature' => $signature,
     ]), content: $body)->assertOk();
+});
+
+it('releases the claim and answers 5xx when a listener throws, so retries reprocess', function (): void {
+    $attempts = 0;
+
+    Event::listen(Events\VirtualAccountPaid::class, function () use (&$attempts): void {
+        if (++$attempts === 1) {
+            throw new RuntimeException('listener exploded');
+        }
+    });
+
+    // First delivery: listener fails → 5xx (SingaPay will retry), claim released.
+    $this->postSingaPayWebhook(vaPayload('INV-RETRY'))->assertServerError();
+
+    $this->assertDatabaseCount('singapay_webhook_events', 0);
+
+    // The gateway's retry must be reprocessed, not swallowed as a duplicate.
+    $this->postSingaPayWebhook(vaPayload('INV-RETRY'))->assertOk()->assertJsonMissing(['duplicate' => true]);
+
+    expect($attempts)->toBe(2);
+    $this->assertDatabaseCount('singapay_webhook_events', 1);
+});
+
+it('acknowledges an in-flight duplicate without dispatching (claim-then-dispatch)', function (): void {
+    $body = (string) json_encode(vaPayload('INV-INFLIGHT'));
+
+    // Another worker holds a fresh, unprocessed claim for this delivery.
+    WebhookEvent::query()->create([
+        'event_id' => hash('sha256', $body),
+        'event_type' => 'va-transaction',
+        'payload' => [],
+        'processed_at' => null,
+    ]);
+
+    Event::fake([Events\VirtualAccountPaid::class]);
+
+    $this->call(
+        'POST',
+        '/webhooks/singapay',
+        server: $this->transformHeadersToServerVars($this->singaPayWebhookHeaders($body)),
+        content: $body,
+    )->assertOk()->assertJson(['duplicate' => true]);
+
+    Event::assertNotDispatched(Events\VirtualAccountPaid::class);
+});
+
+it('reclaims a stale claim left by a crashed worker', function (): void {
+    $body = (string) json_encode(vaPayload('INV-STALE'));
+
+    $stale = WebhookEvent::query()->create([
+        'event_id' => hash('sha256', $body),
+        'event_type' => 'va-transaction',
+        'payload' => [],
+        'processed_at' => null,
+    ]);
+    $stale->forceFill(['created_at' => now()->subMinutes(10)])->save();
+
+    Event::fake([Events\VirtualAccountPaid::class]);
+
+    $this->call(
+        'POST',
+        '/webhooks/singapay',
+        server: $this->transformHeadersToServerVars($this->singaPayWebhookHeaders($body)),
+        content: $body,
+    )->assertOk()->assertJsonMissing(['duplicate' => true]);
+
+    Event::assertDispatched(Events\VirtualAccountPaid::class);
+
+    expect(WebhookEvent::query()->sole()->processed_at)->not->toBeNull();
+});
+
+it('builds signed headers even for raw non-JSON bodies', function (): void {
+    $headers = $this->singaPayWebhookHeaders('not-json');
+
+    expect($headers)->toHaveKeys(['X-Signature', 'X-Timestamp', 'Authorization'])
+        ->and(strlen($headers['X-Signature']))->toBe(128);
+});
+
+it('provides the fake through the testing concern shorthand', function (): void {
+    $fake = $this->fakeSingaPay(['*balance*' => ['balance' => ['value' => '7.00']]]);
+
+    expect(SingaPay::balance()->merchant()->data('balance.value'))->toBe('7.00');
+
+    $fake->assertSentCount(1);
 });
 
 it('rejects non-JSON bodies', function (): void {
