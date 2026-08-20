@@ -1,0 +1,257 @@
+{
+    "description": "Shared signature vectors for the SingaPay JSON canonicalization and request-signature scheme. Consumed by the PHP test suite (and any sibling SDK) — both must match byte-for-byte.",
+    "secret": "singapay-test-secret",
+    "access_token": "eyJ0ZXN0IjoidG9rZW4ifQ.test-access-token",
+    "method": "POST",
+    "endpoint": "/api/v2.0/disbursement/transfer",
+    "timestamp": 1755657600,
+    "string_to_sign_template": "{method}:{endpoint}:{access_token}:{hashed_body}:{timestamp}",
+    "signature_algorithm": "HMAC-SHA512, lowercase hex",
+    "vectors": [
+        {
+            "name": "empty-object",
+            "description": "Empty JSON object must stay {} and not become []",
+            "payload": {},
+            "normalized_json": "{}",
+            "hashed_body": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "expected_signature": "7d92cbed487499b89472b99274570e7c5fe76f54d7502b5d8a9c687029f65abdbf66534820d58197252410e12b78fcff828775b757ec01ec8d53ed2bbaa59c14"
+        },
+        {
+            "name": "empty-list",
+            "description": "Empty list value must stay []",
+            "payload": {
+                "items": []
+            },
+            "normalized_json": "{\"items\":[]}",
+            "hashed_body": "eef46741adfc3a9f76294d3b78f37a45f113092ac9d44ee77c7a038a88ff09a1",
+            "expected_signature": "bb03b4bcdeef427d1ada9e4265cc5c229ca5429f78f069bd3f555eb6c6c774ba5ff979e35b45a9aa987adfcec01b0a46268c80ab144482536bb022cda9085160"
+        },
+        {
+            "name": "unsorted-flat-keys",
+            "description": "Top-level keys sorted alphabetically",
+            "payload": {
+                "b": 2,
+                "a": 1,
+                "c": 3
+            },
+            "normalized_json": "{\"a\":1,\"b\":2,\"c\":3}",
+            "hashed_body": "e6a3385fb77c287a712e7f406a451727f0625041823ecf23bea7ef39b2e39805",
+            "expected_signature": "abc4722c2e5bbb7b6b039f00e2afe50f257385789c33eade0484d2e0a90c35347137e20a53486715f5476fcbd1ecfd2d29d926a5d06036ba93e13a380cbb9aaa"
+        },
+        {
+            "name": "nested-three-levels",
+            "description": "Keys sorted recursively at every depth",
+            "payload": {
+                "z": {
+                    "y": {
+                        "x": 1,
+                        "a": 2
+                    },
+                    "b": 3
+                },
+                "a": 4
+            },
+            "normalized_json": "{\"a\":4,\"z\":{\"b\":3,\"y\":{\"a\":2,\"x\":1}}}",
+            "hashed_body": "fb5f5bf42a2e82cc43c15ffa50fc1a2be95f2f0cbbc1158f21b237290f4b602f",
+            "expected_signature": "cba8ea05d231bbfbf4e0e1a5c33b514ce1d10c8726ece2605492d60bc9b6323ab6bd5a952b837de4eb7b882995fed6328bbc431d19968249052859cc705049d1"
+        },
+        {
+            "name": "array-of-objects",
+            "description": "List order preserved, keys inside each element sorted",
+            "payload": {
+                "items": [
+                    {
+                        "qty": 2,
+                        "name": "Item B"
+                    },
+                    {
+                        "name": "Item A",
+                        "qty": 1
+                    }
+                ]
+            },
+            "normalized_json": "{\"items\":[{\"name\":\"Item B\",\"qty\":2},{\"name\":\"Item A\",\"qty\":1}]}",
+            "hashed_body": "8d87bab4fae7b58040d43768b4cd70bb341e22c6b988c2f6687920d269a8d1f4",
+            "expected_signature": "851c9a3ba586b71ca578239b8ced8bb6a7d4b86fdd1b9d075906a9f5137fd889f2f6088a660d93bf6f8b9a3ae595cbb7f70b9e6c457b9b30d792cf747181b9c2"
+        },
+        {
+            "name": "unicode-value",
+            "description": "Unicode must stay literal (JSON_UNESCAPED_UNICODE)",
+            "payload": {
+                "nama": "Muhamad Hanafi — Café"
+            },
+            "normalized_json": "{\"nama\":\"Muhamad Hanafi — Café\"}",
+            "hashed_body": "7c70ba8b678e1eec1178e2579264783b667f6a2fb0c95bc873117f8ab52288a8",
+            "expected_signature": "62840f86f8b8490f61d7ae4a70bddd336339b1886ba38ba95ce5c225298f8ce67a98874c4c569ed9c73435ca17bd2231a211abc4e08017a9f748d4fcc4e9840e"
+        },
+        {
+            "name": "url-with-slashes",
+            "description": "Slashes must stay unescaped (JSON_UNESCAPED_SLASHES)",
+            "payload": {
+                "redirect_url": "https://gonsu.id/thanks"
+            },
+            "normalized_json": "{\"redirect_url\":\"https://gonsu.id/thanks\"}",
+            "hashed_body": "991fbb127dcec0b5746c371602c8d345c88096553f90e84c4be5d521ae5a5e6b",
+            "expected_signature": "760b19b3e24897b1bfadfd6bfba8c7cc48a55267595c703dcb3fa64b36f28f2e5c5209a36c121cdadf5856c4e5f085a844f5240475cae2705e76408ae3f2f722"
+        },
+        {
+            "name": "null-and-booleans",
+            "description": "null, true, false keep their JSON literals",
+            "payload": {
+                "note": null,
+                "active": true,
+                "deleted": false
+            },
+            "normalized_json": "{\"active\":true,\"deleted\":false,\"note\":null}",
+            "hashed_body": "aac62b7d940fa2667792b12a7901d8efd26829534e719c4a6ce35cb26b0995a3",
+            "expected_signature": "1a98c3e9e4e368909ee65d7288bea363fed1207b7bab8eab2f4388f2bc671a41f5773c7544ff43f96c4d3713a5e95864ba887c1f55060efb7b11d38fb94c8d8e"
+        },
+        {
+            "name": "large-integer",
+            "description": "Large integers serialize without exponent or decimal",
+            "payload": {
+                "amount": 999999999
+            },
+            "normalized_json": "{\"amount\":999999999}",
+            "hashed_body": "ed7e9b61a995d806a86c25c5991e72d41eed74b78b411d2fc143319cc47a581e",
+            "expected_signature": "1e1fd476054cb29590dd3e029fd723c552a967083c80999d849dfcfd765af427cc4bca2cb1b68e396201953dfb79c27d4386b8fd78f2be2299de1e686a9fb573"
+        },
+        {
+            "name": "numeric-string-vs-integer",
+            "description": "String \"100000\" and integer 100000 are different values",
+            "payload": {
+                "reff_no": "100000",
+                "amount": 100000
+            },
+            "normalized_json": "{\"amount\":100000,\"reff_no\":\"100000\"}",
+            "hashed_body": "3c49d82cbcbec8b83a1ba12410baa0d292eaeb49016d336e4ed00f79017ab2e3",
+            "expected_signature": "91ce85b5771b9f96fe0c233a11e67ba4f7077c9056b4e0066e054172d3a73f94d0f1b05444560f767cebc627185f0044b973a5c89a4c3260946e7e2257533383"
+        },
+        {
+            "name": "non-ascii-key",
+            "description": "Byte-order sort: \"z_key\" (0x7A) sorts before \"é_key\" (0xC3)",
+            "payload": {
+                "é_key": "accent",
+                "z_key": "plain"
+            },
+            "normalized_json": "{\"z_key\":\"plain\",\"é_key\":\"accent\"}",
+            "hashed_body": "6bf5337ec2748b7335985f0fee5e0e7ee1c584daab6a294bb22b10ed1cfe4c3e",
+            "expected_signature": "12f9f548dd74331b7a76c2c42a459fd29c9074444e3142e78e1e327ab7b283aa2f421e4f9b132d690e6ca835feb393b428647f534a6f5cd364e0018a7d1a635e"
+        },
+        {
+            "name": "empty-nested-object",
+            "description": "Nested empty object stays {}",
+            "payload": {
+                "name": "test",
+                "metadata": {}
+            },
+            "normalized_json": "{\"metadata\":{},\"name\":\"test\"}",
+            "hashed_body": "1958d0d4f9cf962f9e260f0c9dafd889034d0b702ed6a14067915a992365d140",
+            "expected_signature": "db053bebb527543e8c06db81f77c5e874990939744ada74615473328415631f303a35bc9f722f6210ac7d864661bf0dd215f6720c541731217e959485004cd35"
+        },
+        {
+            "name": "nested-lists-order-preserved",
+            "description": "List elements are never sorted, only their contents",
+            "payload": {
+                "data": {
+                    "tags": [
+                        "b",
+                        "a",
+                        "c"
+                    ],
+                    "nested": [
+                        {
+                            "z": 1,
+                            "a": [
+                                3,
+                                2,
+                                1
+                            ]
+                        }
+                    ]
+                }
+            },
+            "normalized_json": "{\"data\":{\"nested\":[{\"a\":[3,2,1],\"z\":1}],\"tags\":[\"b\",\"a\",\"c\"]}}",
+            "hashed_body": "407b0e81b01b915cf57dbdd689c5b62635b11e32fd93e40128600b860f7d6b9a",
+            "expected_signature": "dfe5756e5f089ce2adc4aaa5d11ba7dbae16c1168b5535225904ad507f14bb7e67d672221c50f4969a88ba4b7891eb4132cbad613abb47c12a2358d7ec8e6484"
+        },
+        {
+            "name": "case-sensitive-keys",
+            "description": "Uppercase sorts before lowercase in byte order",
+            "payload": {
+                "b": 4,
+                "A": 1,
+                "a": 3,
+                "B": 2
+            },
+            "normalized_json": "{\"A\":1,\"B\":2,\"a\":3,\"b\":4}",
+            "hashed_body": "c3086418bf4cdf378f1b5edaa0482bc67ea36f6333eaa368a0aa83634136026d",
+            "expected_signature": "b8f5284c94e0d8eaffd370fb5128e9c59a9187edb4c1a196f464bfa36ee7f74d1dfd4dce10a0975b4c15b0893548c3ace5b73cd0e59ee2862b0556c6c7936ad2"
+        },
+        {
+            "name": "special-characters",
+            "description": "Control characters and quotes escaped canonically",
+            "payload": {
+                "description": "Line1\nLine2\t\"quoted\" & <html> 50%"
+            },
+            "normalized_json": "{\"description\":\"Line1\\nLine2\\t\\\"quoted\\\" & <html> 50%\"}",
+            "hashed_body": "73f18e7da1008a1dd318fb4d532c9b098ca6656366d37eda6b9eeef3c610865e",
+            "expected_signature": "22ac700ddbc5fe6acc61e22326c64c8bd07a5fcff8971e1629bd9bbaf028d84430257098fc5cc69a74b3737f27804e68da5bf04afc4252a9c05071cab47a9cdb"
+        },
+        {
+            "name": "zero-and-negative",
+            "description": "Zero and negative integers",
+            "payload": {
+                "zero": 0,
+                "negative": -1
+            },
+            "normalized_json": "{\"negative\":-1,\"zero\":0}",
+            "hashed_body": "8ca6bad9dbcf15153becac7954ff4cb5b40ea7f0441ebd1a48d90d987081fbc4",
+            "expected_signature": "574c30bd23584ed6a761fdebc3dce39322976ed896101b340cb887fa3bb9129c1464a3f2c61fd64838bdc9c2f25c244cb7a07bc3806e9caae62e6809edc82795"
+        },
+        {
+            "name": "realistic-payment-link",
+            "description": "Realistic create payment link body",
+            "payload": {
+                "total_amount": 150000,
+                "reff_no": "INV-2026-0001",
+                "title": "Pembayaran Café Order",
+                "redirect_url": "https://gonsu.id/thanks?order=1",
+                "items": [
+                    {
+                        "name": "Kopi Susu",
+                        "price": 50000,
+                        "qty": 2
+                    },
+                    {
+                        "name": "Croissant",
+                        "price": 50000,
+                        "qty": 1
+                    }
+                ],
+                "customer": {
+                    "name": "Muhamad Hanafi",
+                    "email": "test@gonsu.id"
+                }
+            },
+            "normalized_json": "{\"customer\":{\"email\":\"test@gonsu.id\",\"name\":\"Muhamad Hanafi\"},\"items\":[{\"name\":\"Kopi Susu\",\"price\":50000,\"qty\":2},{\"name\":\"Croissant\",\"price\":50000,\"qty\":1}],\"redirect_url\":\"https://gonsu.id/thanks?order=1\",\"reff_no\":\"INV-2026-0001\",\"title\":\"Pembayaran Café Order\",\"total_amount\":150000}",
+            "hashed_body": "9905a51769109764fe1184bd752f4420f7f636e537f495f940692d1ceb8a85bc",
+            "expected_signature": "ab72b09ae949ec22e7f9f69827d53abaa677c46e4c3e2d75e05ed2f127a7e5086be4140d7d9cc2a55516ebfd34b6071f5c322f9d2c2c0daaef2fc570009205db"
+        },
+        {
+            "name": "realistic-disbursement",
+            "description": "Realistic disbursement transfer body",
+            "payload": {
+                "reference_number": "TRX-2026-000001",
+                "account_id": "01J5XW8LD0R6M9CJEXAMPLE01",
+                "bank_code": "014",
+                "beneficiary_account_number": "1234567890",
+                "amount": 50000,
+                "remark": "Payout gaji/BONUS"
+            },
+            "normalized_json": "{\"account_id\":\"01J5XW8LD0R6M9CJEXAMPLE01\",\"amount\":50000,\"bank_code\":\"014\",\"beneficiary_account_number\":\"1234567890\",\"reference_number\":\"TRX-2026-000001\",\"remark\":\"Payout gaji/BONUS\"}",
+            "hashed_body": "5b3d4b3372ddcb01ae95fbba93d3b11a69725fd380339a3a5e463b0be7dcd8f4",
+            "expected_signature": "837fbd1a847e0635859f02cc4b16b275422889af761dbf95a34485fd51f9278de277e830d1aab79a7ccde5a46e2ca4c383759159f9302319d3b81473603c486d"
+        }
+    ]
+}
