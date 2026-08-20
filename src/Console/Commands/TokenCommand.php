@@ -35,11 +35,17 @@ class TokenCommand extends Command
             return self::FAILURE;
         }
 
+        // A full bearer token pasted into a logged shell or CI job is
+        // directly replayable against the payment API — make revealing it
+        // a conscious, confirmed act (non-interactive runs stay truncated).
+        $reveal = (bool) $this->option('full')
+            && $this->confirm('The complete bearer token will be printed and may persist in terminal or CI logs. Continue?');
+
         $this->components->twoColumnDetail('Environment', $config->environment->value);
         $this->components->twoColumnDetail('Auth version', $config->authVersion);
         $this->components->twoColumnDetail(
             'Access token',
-            $this->option('full') ? $token : Str::limit($token, 24).' (use --full to reveal)',
+            $reveal ? $token : Str::limit($token, 24).' (use --full to reveal)',
         );
 
         return self::SUCCESS;

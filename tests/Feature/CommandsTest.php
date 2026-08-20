@@ -30,12 +30,31 @@ it('fetches and prints a truncated token', function (): void {
         ->assertSuccessful();
 });
 
-it('prints the complete token with --full', function (): void {
+it('prints the complete token with --full only after confirmation', function (): void {
     Http::fake(tokenEndpointFixtures());
 
     $this->artisan('singapay:token', ['--full' => true])
+        ->expectsConfirmation('The complete bearer token will be printed and may persist in terminal or CI logs. Continue?', 'yes')
         ->expectsOutputToContain('test-access-token')
         ->assertSuccessful();
+});
+
+it('keeps the token truncated when the --full confirmation is declined', function (): void {
+    Http::fake(tokenEndpointFixtures());
+
+    $this->artisan('singapay:token', ['--full' => true])
+        ->expectsConfirmation('The complete bearer token will be printed and may persist in terminal or CI logs. Continue?', 'no')
+        ->expectsOutputToContain('use --full to reveal')
+        ->assertSuccessful();
+});
+
+it('discards the cached token with --fresh', function (): void {
+    Http::fake(tokenEndpointFixtures());
+
+    $this->artisan('singapay:token')->assertSuccessful();
+    $this->artisan('singapay:token', ['--fresh' => true])->assertSuccessful();
+
+    Http::assertSentCount(2); // without --fresh the second call would be cached
 });
 
 it('fails gracefully when the token request is rejected', function (): void {
