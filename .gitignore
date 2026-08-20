@@ -18,3 +18,6 @@ Thumbs.db
 
 # Testbench
 /orchestra/
+
+# Internal planning documents — never published
+/docs/PRD-singapay-sdk.md

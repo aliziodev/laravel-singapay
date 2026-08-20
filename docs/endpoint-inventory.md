@@ -2,7 +2,7 @@
 
 Working reference produced while building the SDK (2026-08-20), cross-checking
 `llms.txt` × the OpenAPI specs × each resource's Overview page, as required by
-the PRD. **[S]** marks the six endpoints that require the request signature
+the internal design brief. **[S]** marks the six endpoints that require the request signature
 (scheme C) and are guarded by `singapay.money_out.enabled`.
 
 Hosts:
@@ -13,7 +13,7 @@ Hosts:
 | Biller | `https://sandbox-biller-b2b.singapay.id` | `https://biller-b2b.singapay.id` |
 | Identity (KYC) | `https://sandbox-apigw.singapay.id` | `https://api.singapay.id` |
 
-> The PRD assumed the identity service lived on `core.singapay.id`; that host
+> Initial research assumed the identity service lived on `core.singapay.id`; that host
 > only serves its documentation. The API hosts are the ones above.
 
 ## Auth
