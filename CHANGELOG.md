@@ -1,3 +1,14 @@
+## 1.4.0 (2026-08-20)
+
+* test: cover audit-surfaced edges, raising coverage to 99.4% ([b6e67ea](https://github.com/aliziodev/laravel-singapay/commit/b6e67ea))
+* refactor: centralize webhook body normalization ([f21dcae](https://github.com/aliziodev/laravel-singapay/commit/f21dcae))
+* feat: add webhook replay helper mirroring live dispatch ([7e89ddd](https://github.com/aliziodev/laravel-singapay/commit/7e89ddd))
+* fix: claim webhook deliveries before dispatching listeners ([4908abf](https://github.com/aliziodev/laravel-singapay/commit/4908abf))
+* fix: harden amount parsing and token caching edge cases ([927cbe5](https://github.com/aliziodev/laravel-singapay/commit/927cbe5))
+* fix: require confirmation before revealing a full bearer token ([0ebd4d0](https://github.com/aliziodev/laravel-singapay/commit/0ebd4d0))
+* fix: surface charge expiry mistakes as charge exceptions ([bbb8b0c](https://github.com/aliziodev/laravel-singapay/commit/bbb8b0c))
+* docs: record the undocumented default-vs-specific credential model ([8189b17](https://github.com/aliziodev/laravel-singapay/commit/8189b17))
+
 ## 1.3.0 (2026-08-20)
 
 * feat: support the dashboard hmac validation key for webhook verification ([093d5fb](https://github.com/aliziodev/laravel-singapay/commit/093d5fb))
