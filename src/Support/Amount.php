@@ -48,10 +48,13 @@ final readonly class Amount implements JsonSerializable, Stringable
     /**
      * Create an amount from an integer, numeric string, or another Amount.
      *
-     * Numeric strings with a fractional part (e.g. "100000.50") are rejected;
-     * "100000.00" is accepted because it is a whole number.
+     * Only plain decimal strings are accepted: digits with an optional
+     * all-zero fraction ("100000", "100000.00"). Fractional values,
+     * exponent notation ("1e3"), signs ("+100"), and values beyond the
+     * platform integer range are rejected — anything ambiguous has no
+     * place in a signed payment payload.
      *
-     * @throws InvalidAmountException When the value is fractional or negative.
+     * @throws InvalidAmountException When the value is fractional, malformed, negative, or too large.
      */
     public static function from(int|string|self $value): self
     {
@@ -63,11 +66,30 @@ final readonly class Amount implements JsonSerializable, Stringable
             return self::rupiah($value);
         }
 
-        if (! is_numeric($value) || (float) $value !== floor((float) $value)) {
+        if (preg_match('/^(?<whole>\d+)(\.(?<fraction>\d+))?$/', $value, $matches) !== 1) {
             throw InvalidAmountException::notAnInteger($value);
         }
 
-        return self::rupiah((int) (float) $value);
+        if (isset($matches['fraction']) && ltrim($matches['fraction'], '0') !== '') {
+            throw InvalidAmountException::notAnInteger($value);
+        }
+
+        $whole = ltrim($matches['whole'], '0');
+
+        if ($whole === '') {
+            return self::rupiah(0);
+        }
+
+        $max = (string) PHP_INT_MAX;
+
+        // strcmp, not string comparison operators: PHP compares two numeric
+        // strings numerically, and PHP_INT_MAX+1 rounds to the same double
+        // as PHP_INT_MAX — the exact boundary this guard exists for.
+        if (strlen($whole) > strlen($max) || (strlen($whole) === strlen($max) && strcmp($whole, $max) > 0)) {
+            throw InvalidAmountException::exceedsIntegerRange($value);
+        }
+
+        return self::rupiah((int) $whole);
     }
 
     /**

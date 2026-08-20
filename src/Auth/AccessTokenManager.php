@@ -110,9 +110,11 @@ final class AccessTokenManager
             );
         }
 
-        // expires_in arrives as a string (e.g. "216000"); keep a refresh buffer.
+        // expires_in arrives as a string (e.g. "216000"); keep a refresh
+        // buffer, but never cache longer than the token actually lives —
+        // a floor above the real lifetime would serve dead tokens.
         $expiresIn = (int) $result->data('expires_in', 0);
-        $ttl = max($expiresIn - self::TTL_BUFFER, self::TTL_BUFFER);
+        $ttl = max(min($expiresIn - self::TTL_BUFFER, $expiresIn), 1);
 
         return [(string) $result->data('access_token'), $ttl];
     }

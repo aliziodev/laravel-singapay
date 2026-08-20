@@ -110,7 +110,9 @@ final class IdentityTokenManager
             );
         }
 
-        $ttl = max((int) $result->data('expires_in', 0) - self::TTL_BUFFER, self::TTL_BUFFER);
+        // Keep a refresh buffer, but never cache longer than the token lives.
+        $expiresIn = (int) $result->data('expires_in', 0);
+        $ttl = max(min($expiresIn - self::TTL_BUFFER, $expiresIn), 1);
 
         return [(string) $result->data('access_token'), $ttl];
     }

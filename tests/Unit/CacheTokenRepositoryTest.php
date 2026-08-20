@@ -50,6 +50,19 @@ it('runs the callback under a lock when the store supports it', function (): voi
     expect($result)->toBe('locked-result');
 });
 
+it('proceeds unlocked instead of failing when the lock wait times out', function (): void {
+    $store = new ArrayStore;
+
+    // Another process holds the refresh lock and never releases it.
+    expect($store->lock('k:lock', 60)->get())->toBeTrue();
+
+    // lockSeconds 0 → block() gives up immediately with LockTimeoutException,
+    // which must degrade to a direct call, not escape to the caller.
+    $repository = new CacheTokenRepository(new CacheRepository($store), lockSeconds: 0);
+
+    expect($repository->withLock('k', fn (): string => 'degraded-result'))->toBe('degraded-result');
+});
+
 it('degrades to an unlocked callback on stores without lock support', function (): void {
     $store = new class implements Store
     {

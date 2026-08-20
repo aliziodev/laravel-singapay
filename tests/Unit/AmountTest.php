@@ -29,6 +29,39 @@ it('rejects non-numeric strings', function (): void {
     Amount::from('abc');
 })->throws(InvalidAmountException::class);
 
+it('rejects ambiguous numeric notations outright', function (string $value): void {
+    expect(fn () => Amount::from($value))->toThrow(InvalidAmountException::class);
+})->with([
+    'exponent notation' => ['1e3'],
+    'explicit plus sign' => ['+100'],
+    'negative string' => ['-5'],
+    'leading whitespace' => [' 100'],
+    'hex-ish' => ['0x1A'],
+    'bare fraction' => ['.5'],
+    'empty string' => [''],
+]);
+
+it('rejects values beyond the platform integer range', function (): void {
+    Amount::from('99999999999999999999');
+})->throws(InvalidAmountException::class, 'integer range');
+
+it('rejects PHP_INT_MAX + 1 exactly, where numeric string comparison would saturate', function (): void {
+    // '9223372036854775808' promotes to the same double as PHP_INT_MAX, so
+    // a numeric > comparison would pass and (int) would silently saturate.
+    Amount::from('9223372036854775808');
+})->throws(InvalidAmountException::class, 'integer range');
+
+it('accepts exactly PHP_INT_MAX', function (): void {
+    expect(Amount::from((string) PHP_INT_MAX)->value)->toBe(PHP_INT_MAX);
+});
+
+it('normalizes leading zeros and zero-only strings', function (): void {
+    expect(Amount::from('000123')->value)->toBe(123)
+        ->and(Amount::from('0')->value)->toBe(0)
+        ->and(Amount::from('0.00')->value)->toBe(0)
+        ->and(Amount::from('150000.000')->value)->toBe(150000);
+});
+
 it('passes through existing instances', function (): void {
     $amount = Amount::rupiah(5000);
 

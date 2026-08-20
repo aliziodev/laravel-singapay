@@ -70,6 +70,27 @@ it('refreshes the token after the cache TTL expires', function (): void {
     Http::assertSentCount(2);
 });
 
+it('never caches a token beyond its actual lifetime', function (): void {
+    Http::fake([
+        '*access-token*' => Http::response([
+            'status' => 200,
+            'success' => true,
+            // Lifetime below the refresh buffer: the TTL must clamp to ~1s,
+            // never up to the 60s buffer floor (which would serve dead tokens).
+            'data' => ['access_token' => 'ephemeral', 'expires_in' => '30'],
+        ]),
+    ]);
+
+    $manager = app(AccessTokenManager::class);
+    $manager->token();
+
+    $this->travel(2)->seconds();
+
+    $manager->token();
+
+    Http::assertSentCount(2);
+});
+
 it('uses basic authentication for the legacy v1.0 scheme', function (): void {
     config()->set('singapay.auth_version', '1.0');
     reloadSingaPay();

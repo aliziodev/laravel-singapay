@@ -27,4 +27,12 @@ class InvalidAmountException extends SingaPayException
     {
         return new self("Amount [{$value}] is negative. SingaPay amounts must be zero or positive.");
     }
+
+    /**
+     * The value cannot be represented as a native integer without loss.
+     */
+    public static function exceedsIntegerRange(string $value): self
+    {
+        return new self("Amount [{$value}] exceeds the platform integer range and cannot be represented safely.");
+    }
 }

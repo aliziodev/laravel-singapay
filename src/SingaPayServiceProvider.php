@@ -52,7 +52,11 @@ class SingaPayServiceProvider extends ServiceProvider
         $this->app->singleton(JsonNormalizerInterface::class, JsonNormalizer::class);
 
         $this->app->singleton(TokenRepositoryInterface::class, function (Application $app): CacheTokenRepository {
-            return new CacheTokenRepository($app->make(CacheFactory::class)->store());
+            return new CacheTokenRepository(
+                $app->make(CacheFactory::class)->store(),
+                // The refresh lock must outlive the slowest token request.
+                lockSeconds: $app->make(SingaPayConfig::class)->timeout + 15,
+            );
         });
 
         $this->app->singleton(JakartaClock::class);
