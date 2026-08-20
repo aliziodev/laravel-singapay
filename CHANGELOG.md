@@ -1,3 +1,7 @@
+## 1.2.0 (2026-08-20)
+
+* feat: expose the webhook ledger as an eloquent model ([4e9ff24](https://github.com/aliziodev/laravel-singapay/commit/4e9ff24))
+
 ## 1.1.0 (2026-08-20)
 
 * docs: document the unified charge api ([b91a190](https://github.com/aliziodev/laravel-singapay/commit/b91a190))
