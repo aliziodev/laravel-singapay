@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+use Aliziodev\Singapay\Auth\IdentitySigner;
 use Aliziodev\Singapay\Auth\IdentityTokenManager;
+use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
 use Aliziodev\Singapay\Exceptions\AuthenticationException;
 use Aliziodev\Singapay\Exceptions\ConnectionException;
+use Aliziodev\Singapay\Support\SingaPayConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException as HttpConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -44,6 +48,42 @@ it('exchanges fresh credentials after forget()', function (): void {
     $manager->token();
 
     Http::assertSentCount(2);
+});
+
+it('honours the double-check inside the lock without a second exchange', function (): void {
+    Http::fake();
+
+    // Simulates losing the pre-lock race: get() misses outside the lock,
+    // then hits inside it — no credential exchange may happen.
+    $repository = new class implements TokenRepositoryInterface
+    {
+        private int $reads = 0;
+
+        public function get(string $key): ?string
+        {
+            return ++$this->reads > 1 ? 'kyc-token-from-competitor' : null;
+        }
+
+        public function put(string $key, string $token, int $ttlSeconds): void {}
+
+        public function forget(string $key): void {}
+
+        public function withLock(string $key, Closure $callback): mixed
+        {
+            return $callback();
+        }
+    };
+
+    $manager = new IdentityTokenManager(
+        $repository,
+        app(Factory::class),
+        app(IdentitySigner::class),
+        app(SingaPayConfig::class),
+    );
+
+    expect($manager->token())->toBe('kyc-token-from-competitor');
+
+    Http::assertNothingSent();
 });
 
 it('throws AuthenticationException when the KYC service rejects the exchange', function (): void {

@@ -116,6 +116,12 @@ it('computes a signature from a JSON file via singapay:verify-signature', functi
     unlink((string) $file);
 });
 
+it('explains itself when the file argument is omitted', function (): void {
+    $this->artisan('singapay:verify-signature')
+        ->expectsOutputToContain('Pass the path of a JSON file')
+        ->assertFailed();
+});
+
 it('rejects missing or invalid signature input files', function (): void {
     $this->artisan('singapay:verify-signature', ['file' => 'does-not-exist.json'])->assertFailed();
 

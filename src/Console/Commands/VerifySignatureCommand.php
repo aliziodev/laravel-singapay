@@ -19,7 +19,7 @@ use Illuminate\Console\Command;
 class VerifySignatureCommand extends Command
 {
     protected $signature = 'singapay:verify-signature
-        {file : Path to a JSON file containing the request body}
+        {file? : Path to a JSON file containing the request body}
         {--method=POST : HTTP method}
         {--endpoint=/api/v2.0/disbursement/transfer : Endpoint path including query string}
         {--token=ACCESS_TOKEN : Bearer token used in the string-to-sign}
@@ -35,8 +35,8 @@ class VerifySignatureCommand extends Command
     ): int {
         $file = $this->argument('file');
 
-        if (! is_string($file)) {
-            $this->components->error('The file argument must be a path string.');
+        if (! is_string($file) || $file === '') {
+            $this->components->error('Pass the path of a JSON file containing the request body, e.g. `php artisan singapay:verify-signature body.json`.');
 
             return self::FAILURE;
         }

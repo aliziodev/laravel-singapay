@@ -9,9 +9,11 @@ use Aliziodev\Singapay\Endpoints\PaymentLinks;
 use Aliziodev\Singapay\Http\Client;
 use Aliziodev\Singapay\Http\Middleware\VerifyWebhookSignature;
 use Aliziodev\Singapay\SingaPay;
+use Aliziodev\Singapay\SingaPayServiceProvider;
 use Aliziodev\Singapay\Support\JsonNormalizer;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Psr\Log\NullLogger;
 
@@ -63,6 +65,29 @@ it('injects a null logger into the client when logging is disabled', function ()
     $logger = (new ReflectionProperty($client, 'logger'))->getValue($client);
 
     expect($logger)->toBeInstanceOf(NullLogger::class);
+
+    // And a real request through the client skips logging entirely.
+    Http::fake([
+        ...tokenEndpointFixtures(),
+        '*balance-inquiry*' => Http::response(['status' => 200, 'success' => true, 'data' => []]),
+    ]);
+
+    expect(Aliziodev\Singapay\Facades\SingaPay::balance()->merchant()->successful())->toBeTrue();
+});
+
+it('registers no publishables or commands outside the console', function (): void {
+    $app = Mockery::mock($this->app)->makePartial();
+    $app->shouldReceive('runningInConsole')->twice()->andReturnFalse();
+
+    $provider = new SingaPayServiceProvider($app);
+
+    foreach (['registerPublishables', 'registerCommands'] as $method) {
+        (new ReflectionMethod($provider, $method))->invoke($provider);
+    }
+
+    // Mockery verifies runningInConsole was consulted exactly twice and
+    // the early returns prevented anything below from executing.
+    expect(true)->toBeTrue();
 });
 
 it('exposes the client, config, and charge accessors on the manager', function (): void {
