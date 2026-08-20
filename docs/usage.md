@@ -94,6 +94,29 @@ $response = SingaPay::paymentLinks()->create([
 $response->data('payment_url');
 ```
 
+#### Membatasi metode pembayaran (dan cara membayar di Alfamart/Indomaret)
+
+`whitelisted_payment_method` membatasi metode yang muncul di halaman pembayaran. Ini juga **satu-satunya jalan** ke pembayaran gerai retail — SingaPay tidak menyediakan endpoint retail tersendiri (sudah diprobe: semua kandidat path menjawab 404).
+
+```php
+SingaPay::paymentLinks()->create([
+    // ... field lain ...
+    'whitelisted_payment_method' => ['ALFAMART', 'INDOMARET'],
+]);
+```
+
+Gateway menormalkan kode yang Anda kirim, jadi jangan bandingkan hasilnya mentah-mentah: `ALFAMART` kembali sebagai `RETAIL_ALFAMART_LINKQU`.
+
+Daftar kode resmi datang dari gateway, bukan dari dokumen ini — `SingaPay::paymentLinks()->paymentMethods()` mengembalikan `payment_methods` (dengan `code`, `name`, `group`, `desc`) dan `available_codes`. Per sandbox 2026-08-21 ada 20 kode dalam lima grup:
+
+| Grup | Kode |
+|---|---|
+| `card` | `NICEPAY_CARD` |
+| `ewallet` | `EWALLET_DANA`, `EWALLET_GOPAY`, `EWALLET_OVO`, `EWALLET_SHOPEEPAY` |
+| `offline_store` | `ALFAMART`, `INDOMARET` |
+| `qris` | `QRIS` |
+| `va` | `VA_BCA`, `VA_BNC`, `VA_BNI`, `VA_BRI`, `VA_BSI`, `VA_CIMB`, `VA_DANAMON`, `VA_MANDIRI`, `VA_MAYBANK`, `VA_MUAMALAT`, `VA_OCBC`, `VA_PERMATA` |
+
 ### Virtual Account
 
 ```php

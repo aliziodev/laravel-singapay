@@ -169,13 +169,24 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 5. **`X-Timestamp` format**: the canonical signature guide says Unix seconds;
    the direct-debit charge page mentions ISO-8601. The SDK sends Unix seconds
    everywhere (canonical guide + reference implementations).
-6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5. The SDK does
-   not restrict the value. Probed against sandbox on 2026-08-21 — exactly nine
-   are accepted: `BRI`, `BNI`, `BCA`, `MANDIRI`, `PERMATA`, `CIMB`, `DANAMON`,
-   `BSI`, `MAYBANK`. `BTN`, `BJB`, `SINARMAS`, `MEGA` and `BUKOPIN` are
-   rejected with HTTP 422 `bank_code: "The selected bank code is invalid."`
-   Sandbox availability is not a promise about production — confirm with
-   SingaPay before relying on the list.
+6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5 — the docs are
+   right. The SDK does not restrict the value. Probed against sandbox on
+   2026-08-21: all twelve `VA_*` codes returned by
+   `payment-link-manage/payment-methods` are accepted — `BCA`, `BNC`, `BNI`,
+   `BRI`, `BSI`, `CIMB`, `DANAMON`, `MANDIRI`, `MAYBANK`, `MUAMALAT`, `OCBC`,
+   `PERMATA` (pass them to `virtual-accounts` without the `VA_` prefix).
+   `BTN`, `BJB`, `SINARMAS`, `MEGA` and `BUKOPIN` are rejected with HTTP 422
+   `bank_code: "The selected bank code is invalid."` Treat
+   `paymentMethods()` as the live source of truth rather than any static list.
+
+11. **Retail outlet (Alfamart/Indomaret) has no endpoint of its own.** The
+    dashboard ships a Retail Outlet simulator and `payment-methods` advertises
+    `ALFAMART` / `INDOMARET` under group `offline_store`, but every plausible
+    dedicated path 404s (`retail-outlet`, `retail-outlets`, `retail`,
+    `offline-store`, `retail-transactions`, `convenience-store`, under both
+    v1.0 and v2.0). Retail is reachable only as a
+    `whitelisted_payment_method` on a payment link; the gateway echoes the
+    code back normalised (`ALFAMART` → `RETAIL_ALFAMART_LINKQU`).
 7. **Token endpoint version**: docs use v1.1, the OpenAPI spec still
    references v1.0. Configurable via `auth_version` (default 1.1).
 8. **Payment-link webhook has no `event` field** in its documented example,

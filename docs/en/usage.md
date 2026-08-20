@@ -94,6 +94,29 @@ $response = SingaPay::paymentLinks()->create([
 $response->data('payment_url');
 ```
 
+#### Restricting payment methods (and how to accept Alfamart/Indomaret)
+
+`whitelisted_payment_method` limits which methods appear on the payment page. It is also the **only** route to retail-outlet payments — SingaPay exposes no dedicated retail endpoint (probed: every candidate path answers 404).
+
+```php
+SingaPay::paymentLinks()->create([
+    // ... other fields ...
+    'whitelisted_payment_method' => ['ALFAMART', 'INDOMARET'],
+]);
+```
+
+The gateway normalises the codes you send, so never compare the result verbatim: `ALFAMART` comes back as `RETAIL_ALFAMART_LINKQU`.
+
+The authoritative list comes from the gateway, not from this page — `SingaPay::paymentLinks()->paymentMethods()` returns `payment_methods` (each with `code`, `name`, `group`, `desc`) plus `available_codes`. As of sandbox 2026-08-21 there are 20 codes in five groups:
+
+| Group | Codes |
+|---|---|
+| `card` | `NICEPAY_CARD` |
+| `ewallet` | `EWALLET_DANA`, `EWALLET_GOPAY`, `EWALLET_OVO`, `EWALLET_SHOPEEPAY` |
+| `offline_store` | `ALFAMART`, `INDOMARET` |
+| `qris` | `QRIS` |
+| `va` | `VA_BCA`, `VA_BNC`, `VA_BNI`, `VA_BRI`, `VA_BSI`, `VA_CIMB`, `VA_DANAMON`, `VA_MANDIRI`, `VA_MAYBANK`, `VA_MUAMALAT`, `VA_OCBC`, `VA_PERMATA` |
+
 ### Virtual accounts
 
 ```php
