@@ -8,7 +8,7 @@ use Aliziodev\Singapay\Enums\WebhookType;
 
 /**
  * A batch of products (payment links, virtual accounts, QRIS) expired
- * (webhook event `product_expiration`).
+ * (webhook event `product-expiration`).
  */
 class ProductsExpired extends WebhookReceived
 {

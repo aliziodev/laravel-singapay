@@ -8,7 +8,7 @@ use Aliziodev\Singapay\Enums\WebhookType;
 
 /**
  * A batch of unpaid money-in transaction attempts expired
- * (webhook event `transaction_expiration`).
+ * (webhook event `transaction-expiration`).
  *
  * Unlike {@see ProductsExpired}, the underlying products (e.g. the payment
  * link itself) remain active — only the individual attempts expired.

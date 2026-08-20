@@ -143,8 +143,8 @@ it('dispatches the dedicated event class for every webhook type', function (arra
     'settlement' => [['event' => 'settlement.completed', 'data' => []], Events\SettlementProcessed::class],
     'direct debit' => [['event' => 'direct-debit-binding', 'data' => ['binding_id' => 'b1', 'status' => 'ACTIVE']], Events\DirectDebitBindingUpdated::class],
     'payment link inquiry' => [['event' => 'payment_link.inquiry', 'data' => []], Events\PaymentLinkInquiryReceived::class],
-    'product expiration' => [['event' => 'product_expiration', 'data' => []], Events\ProductsExpired::class],
-    'transaction expiration' => [['event' => 'transaction_expiration', 'data' => []], Events\MoneyInTransactionsExpired::class],
+    'product expiration' => [['event' => 'product-expiration', 'data' => []], Events\ProductsExpired::class],
+    'transaction expiration' => [['event' => 'transaction-expiration', 'data' => []], Events\MoneyInTransactionsExpired::class],
 ]);
 
 it('skips verification when disabled, and idempotency when disabled', function (): void {

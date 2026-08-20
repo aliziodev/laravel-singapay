@@ -30,8 +30,8 @@ enum WebhookType: string
     case Settlement = 'settlement';
     case DirectDebit = 'direct-debit';
     case PaymentLinkInquiry = 'payment-link-inquiry';
-    case ProductExpiration = 'product_expiration';
-    case TransactionExpiration = 'transaction_expiration';
+    case ProductExpiration = 'product-expiration';
+    case TransactionExpiration = 'transaction-expiration';
 
     /**
      * Identify the webhook type from a decoded payload.
@@ -73,6 +73,19 @@ enum WebhookType: string
 
         if ($exact instanceof self) {
             return $exact;
+        }
+
+        // The docs spell the two expiration events with underscores while the
+        // gateway sends hyphens (verified against a live delivery). Normalise
+        // rather than bet on one spelling.
+        $normalized = str_replace('_', '-', $event);
+
+        if ($normalized !== $event) {
+            $fallback = self::tryFrom($normalized);
+
+            if ($fallback instanceof self) {
+                return $fallback;
+            }
         }
 
         return match (true) {

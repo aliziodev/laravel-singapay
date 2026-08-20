@@ -24,8 +24,11 @@ it('discriminates deliveries by the event field', function (string $event, Webho
     'settlement refunded' => ['settlement.refunded', WebhookType::Settlement],
     'payment link inquiry' => ['payment_link.inquiry', WebhookType::PaymentLinkInquiry],
     'payment link inquiry expired' => ['payment_link.inquiry.expired', WebhookType::PaymentLinkInquiry],
-    'product expiration' => ['product_expiration', WebhookType::ProductExpiration],
-    'transaction expiration' => ['transaction_expiration', WebhookType::TransactionExpiration],
+    'product expiration' => ['product-expiration', WebhookType::ProductExpiration],
+    'transaction expiration' => ['transaction-expiration', WebhookType::TransactionExpiration],
+    // The docs spell these two with underscores; the gateway sends hyphens.
+    'product expiration (underscore spelling)' => ['product_expiration', WebhookType::ProductExpiration],
+    'transaction expiration (underscore spelling)' => ['transaction_expiration', WebhookType::TransactionExpiration],
     'direct debit' => ['direct-debit-binding', WebhookType::DirectDebit],
 ]);
 

@@ -12,11 +12,35 @@
 
 ## Konfigurasi di dashboard SingaPay
 
-Arahkan semua URL callback ke route yang sama:
+Dashboard menyediakan **enam kolom Notif URL terpisah** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, dan Subscription Cycle. Arahkan semuanya ke route yang sama:
 
 ```
 https://app-anda.com/webhooks/singapay
 ```
+
+Satu route sudah cukup: controller mengenali tipe dari payload, bukan dari URL.
+
+### Kunci penanda tangan: Client Secret
+
+SingaPay menandatangani webhook dengan **Client Secret**, bukan HMAC Validation Key. Ini diverifikasi langsung terhadap delivery sungguhan (2026-08-21): tanda tangan dihitung ulang dengan kedua kunci, dan hanya Client Secret yang cocok.
+
+SDK tetap menerima keduanya, jadi Anda tidak perlu mengubah apa pun. Tapi kalau `SINGAPAY_HMAC_KEY` adalah satu-satunya kunci yang Anda set dan Client Secret tidak dikonfigurasi, verifikasi akan gagal.
+
+### Tombol "Test" di dashboard mengirim request TANPA tanda tangan
+
+Tombol **Test** di sebelah tiap kolom Notif URL mengirim payload dummy seperti ini:
+
+```json
+{"status": 200, "success": true, "data": "VA Payment Notification testing"}
+```
+
+**tanpa** header `X-Signature`, `X-Timestamp`, maupun `Authorization`. SDK menolaknya dengan 401 dan pesan `Invalid webhook signature.` — dan itu **perilaku yang benar**, bukan tanda instalasi Anda rusak.
+
+Jadi tombol Test hanya membuktikan URL Anda terjangkau dari internet. Untuk menguji jalur lengkapnya, picu transaksi sungguhan lewat **Simulator** di dashboard; delivery asli datang lengkap dengan ketiga header itu dan akan lolos verifikasi.
+
+Kalau Anda benar-benar ingin tombol Test lolos, satu-satunya cara adalah mematikan verifikasi (`SINGAPAY_WEBHOOK_VERIFY=false`) — jangan pernah lakukan itu di produksi.
+
+Delivery datang dari user-agent `GuzzleHttp/7`. IP asalnya tidak didokumentasikan SingaPay dan tidak dijamin stabil, jadi jangan jadikan allowlist IP sebagai satu-satunya kontrol — tanda tangan yang menjadi otoritasnya.
 
 ## Daftar event
 
@@ -33,8 +57,8 @@ https://app-anda.com/webhooks/singapay
 | `SettlementProcessed` | `settlement.*` | khusus |
 | `DirectDebitBindingUpdated` | `direct-debit*` | `direct_debit_notif_url` |
 | `PaymentLinkInquiryReceived` | `payment_link.inquiry*` | khusus |
-| `ProductsExpired` | `product_expiration` (batch) | opsional |
-| `MoneyInTransactionsExpired` | `transaction_expiration` (batch) | opsional |
+| `ProductsExpired` | `product-expiration` (batch) | opsional |
+| `MoneyInTransactionsExpired` | `transaction-expiration` (batch) | opsional |
 
 Semua event turunan `WebhookReceived`, jadi selalu punya `->payload`, `->type`, `->event()`, dan `->data('dot.notation')`.
 

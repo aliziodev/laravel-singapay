@@ -12,11 +12,35 @@
 
 ## SingaPay dashboard configuration
 
-Point every callback URL at the same route:
+The dashboard exposes **six separate Notif URL fields** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, and Subscription Cycle. Point every one of them at the same route:
 
 ```
 https://your-app.com/webhooks/singapay
 ```
+
+One route is enough: the controller identifies the type from the payload, never from the URL.
+
+### The signing key is the Client Secret
+
+SingaPay signs webhooks with the **Client Secret**, not the HMAC Validation Key. This was verified against a live delivery (2026-08-21) by recomputing the signature with both keys — only the Client Secret matched.
+
+The SDK accepts either, so nothing needs changing on your side. But if `SINGAPAY_HMAC_KEY` is the only key you set and the Client Secret is not configured, verification will fail.
+
+### The dashboard "Test" button sends an UNSIGNED request
+
+The **Test** button beside each Notif URL field posts a dummy payload:
+
+```json
+{"status": 200, "success": true, "data": "VA Payment Notification testing"}
+```
+
+with **no** `X-Signature`, `X-Timestamp` or `Authorization` header. The SDK answers 401 `Invalid webhook signature.` — which is **correct behaviour**, not a sign your installation is broken.
+
+So the Test button only proves your URL is reachable from the internet. To exercise the full path, trigger a real transaction through the dashboard **Simulator**; genuine deliveries carry all three headers and verify cleanly.
+
+If you really want the Test button to succeed, the only way is to turn verification off (`SINGAPAY_WEBHOOK_VERIFY=false`) — never do that in production.
+
+Deliveries arrive with the user-agent `GuzzleHttp/7`. SingaPay does not document their source IP and it is not guaranteed stable, so never make an IP allowlist your only control — the signature is the authority.
 
 ## Event catalogue
 
@@ -33,8 +57,8 @@ https://your-app.com/webhooks/singapay
 | `SettlementProcessed` | `settlement.*` | dedicated |
 | `DirectDebitBindingUpdated` | `direct-debit*` | `direct_debit_notif_url` |
 | `PaymentLinkInquiryReceived` | `payment_link.inquiry*` | dedicated |
-| `ProductsExpired` | `product_expiration` (batch) | optional |
-| `MoneyInTransactionsExpired` | `transaction_expiration` (batch) | optional |
+| `ProductsExpired` | `product-expiration` (batch) | optional |
+| `MoneyInTransactionsExpired` | `transaction-expiration` (batch) | optional |
 
 Every event extends `WebhookReceived`, so all of them expose `->payload`, `->type`, `->event()`, and `->data('dot.notation')`.
 
