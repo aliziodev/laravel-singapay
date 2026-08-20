@@ -1,3 +1,8 @@
+## 1.3.0 (2026-08-20)
+
+* feat: support the dashboard hmac validation key for webhook verification ([093d5fb](https://github.com/aliziodev/laravel-singapay/commit/093d5fb))
+* docs: state why the singapay timezone is a constant, not config ([62cfe03](https://github.com/aliziodev/laravel-singapay/commit/62cfe03))
+
 ## 1.2.0 (2026-08-20)
 
 * feat: expose the webhook ledger as an eloquent model ([4e9ff24](https://github.com/aliziodev/laravel-singapay/commit/4e9ff24))
