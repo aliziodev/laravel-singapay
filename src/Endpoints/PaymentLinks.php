@@ -10,12 +10,22 @@ use Aliziodev\Singapay\Http\Response;
 /**
  * Payment link management.
  *
- * Rules worth knowing before calling {@see create()}:
- * - `total_amount` must equal the sum of the item subtotals exactly.
+ * {@see create()}, {@see find()} and {@see update()} use the **v2** API,
+ * which the gateway spec marks as current and whose v1 counterparts it labels
+ * "Legacy". {@see list()}, {@see delete()} and {@see paymentMethods()} stay on
+ * v1 because v2 has no equivalent.
+ *
+ * Rules worth knowing:
+ * - `payment_link_type` decides the shape: `total` takes `total_amount` and
+ *   ignores `items`; `items` takes `items` and computes the total server-side.
+ * - `expired_at` is any parseable date/time string (ISO 8601 recommended) —
+ *   **not** the 13-digit millisecond string v1 required. Omit it to default to
+ *   24 hours from creation.
  * - `reff_no` is at most 40 characters, no spaces or slashes.
- * - `expired_at` is a 13-digit Unix **millisecond** string (unlike the
- *   X-Timestamp header, which is seconds) — use JakartaClock::toMilliseconds().
  * - `payment_link_id` is the numeric `payment_links.id`, not a ULID.
+ * - `max_usage` defaults to 1; `0` means unlimited. `is_multiple_payment`,
+ *   `is_unlimited_usage` and `required_customer_detail` are derived from it and
+ *   cannot be set directly.
  * - On update, `max_usage` must be >= the current usage.
  */
 class PaymentLinks extends Endpoint
@@ -45,53 +55,60 @@ class PaymentLinks extends Endpoint
     /**
      * Create a payment link.
      *
-     * `POST /api/v1.0/payment-link-manage/{account_id}`
+     * `POST /api/v2.0/payment-link/{account_id}`
      *
-     * @param  array<string, mixed>  $data  Required: `reff_no`, `title`, `max_usage`,
-     *                                      `total_amount`, `items` (each: name, quantity, unit_price). Optional:
-     *                                      `required_customer_detail`, `customer_pays_fee`, `expired_at` (13-digit ms string),
-     *                                      `whitelisted_payment_method`, `redirect_url`, `success_redirect_url`,
-     *                                      `expired_redirect_url`, `optional_metadata`.
+     * @param  array<string, mixed>  $data  Required: `reff_no` and
+     *                                      `payment_link_type` (`total`|`items`) — plus `total_amount` for `total`,
+     *                                      or `items` (each: `name`, `quantity`, `unit_price`; negative prices act as
+     *                                      discounts) for `items`. Optional: `description`, `max_usage` (1 by default,
+     *                                      `0` for unlimited), `expired_at` (any parseable date string; defaults to
+     *                                      24h), `whitelisted_payment_method` (omit to auto-select eligible methods),
+     *                                      `success_redirect_url`, `expired_redirect_url`, `optional_metadata`,
+     *                                      `customer_name`/`customer_email`/`customer_phone` (single-use links only,
+     *                                      and name+email travel together), `required_customer_number`,
+     *                                      `required_customer_email` (multi-use links only).
      * @param  string|null  $accountId  Account ULID.
      */
     public function create(array $data, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('POST', "/api/v1.0/payment-link-manage/{$this->accountId($accountId)}", body: $data));
+        return $this->send(new ApiRequest('POST', "/api/v2.0/payment-link/{$this->accountId($accountId)}", body: $data));
     }
 
     /**
      * Retrieve one payment link.
      *
-     * `GET /api/v1.0/payment-link-manage/{account_id}/{payment_link_id}`
+     * `GET /api/v2.0/payment-link/{payment_link_id}` — v2 resolves and
+     * access-checks the owning account from the link itself, so no account id
+     * is needed.
      *
      * @param  int  $paymentLinkId  Numeric `payment_links.id`.
-     * @param  string|null  $accountId  Account ULID.
      */
-    public function find(int $paymentLinkId, ?string $accountId = null): Response
+    public function find(int $paymentLinkId): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/payment-link-manage/{$this->accountId($accountId)}/{$paymentLinkId}"));
+        return $this->send(new ApiRequest('GET', "/api/v2.0/payment-link/{$paymentLinkId}"));
     }
 
     /**
-     * Update a payment link. `reff_no`, `title`, `total_amount`, and `items`
-     * are immutable — create a new link instead.
+     * Update a payment link. `reff_no`, `total_amount` and `items` are
+     * immutable — create a new link instead.
      *
-     * `PUT /api/v1.0/payment-link-manage/{account_id}/{payment_link_id}`
+     * `PUT /api/v2.0/payment-link/update/{payment_link_id}`
      *
-     * In practice this endpoint only moves the status: sandbox accepted a
-     * `title` alongside `status` and left the title unchanged (verified
-     * 2026-08-21). Treat the other fields as write-once at creation.
+     * Every field is optional and omitting one leaves it untouched, unlike v1
+     * which demanded `status` on every call and silently ignored the rest.
      *
      * @param  int  $paymentLinkId  Numeric `payment_links.id`.
-     * @param  array<string, mixed>  $data  Required: `status`
-     *                                      (open|closed|expired) — omitting it fails with
-     *                                      `422 {"status": ["Status is required"]}`. `max_usage` must be >= current
-     *                                      usage when supplied.
-     * @param  string|null  $accountId  Account ULID.
+     * @param  array<string, mixed>  $data  Any of `status`
+     *                                      (open|closed|expired), `description`, `max_usage` (>= current usage; `0`
+     *                                      for unlimited), `expired_at` (must be in the future),
+     *                                      `whitelisted_payment_method` (`null`/`[]` re-auto-selects; omit to leave
+     *                                      the current whitelist alone), `success_redirect_url`,
+     *                                      `expired_redirect_url`, `optional_metadata`, `required_customer_number`,
+     *                                      `required_customer_email`.
      */
-    public function update(int $paymentLinkId, array $data, ?string $accountId = null): Response
+    public function update(int $paymentLinkId, array $data): Response
     {
-        return $this->send(new ApiRequest('PUT', "/api/v1.0/payment-link-manage/{$this->accountId($accountId)}/{$paymentLinkId}", body: $data));
+        return $this->send(new ApiRequest('PUT', "/api/v2.0/payment-link/update/{$paymentLinkId}", body: $data));
     }
 
     /**

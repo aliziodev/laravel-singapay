@@ -84,12 +84,12 @@ $charge->data('...');      // full response access
 |---|---|---|---|---|
 | `amount` | ✅ required | ✅ required | ✅ required | ✅ required |
 | `reference` | ✅ required (`reff_no`) | optional | optional | optional |
-| `expires_at` | → 13-digit ms | → 13-digit ms (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
+| `expires_at` | → ISO 8601 | → 13-digit ms (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
 | `bank_code` | — | ✅ required | — | — |
 | `vendor` | — | — | — | ✅ required (e.g. `DANA`) |
 | `customer` | — | `name` → VA name | — | `customer_*` |
-| `title`, `items`, `max_usage` | ✅ (items synthesized when absent) | `max_usage` | — | — |
-| `redirect_url` | ✅ | — | — | → `merchant_redirect_url` |
+| `title`, `items`, `max_usage` | ✅ (`title` → `description`; `items` optional — v2 totals them itself) | `max_usage` | — | — |
+| `redirect_url` | → `success_redirect_url` | — | — | → `merchant_redirect_url` |
 | `options` | escape hatch: raw fields merged onto the payload last | ⬅ same | ⬅ same | ⬅ same |
 
 Unmappable input (unknown method, missing required field, float `amount`) throws `ChargeException` **before** any traffic leaves. A VA without `expires_at` is created `permanent`; with one it becomes `temporary` + `max_usage` (default 1).
@@ -98,17 +98,26 @@ Unmappable input (unknown method, missing required field, float `amount`) throws
 
 ### Payment links
 
+`create()`, `find()` and `update()` use the **v2** API — the gateway spec labels their v1 counterparts "Legacy". `list()`, `delete()` and `paymentMethods()` stay on v1, which is the only version that has them.
+
 ```php
+// "total" shape: send the amount, no items needed at all.
 $response = SingaPay::paymentLinks()->create([
     'reff_no' => 'INV-2026-0001',      // max 40 chars, no spaces/slashes
-    'title' => 'Invoice #0001',
-    'max_usage' => 1,
-    'total_amount' => Amount::rupiah(150_000), // must equal the sum of item subtotals
+    'payment_link_type' => 'total',
+    'total_amount' => Amount::rupiah(150_000),
+    'max_usage' => 1,                  // defaults to 1; 0 means unlimited
+    'expired_at' => now()->addDay()->toIso8601String(), // an ordinary date string
+]);
+
+// "items" shape: the gateway does the arithmetic. Negative prices are discounts.
+SingaPay::paymentLinks()->create([
+    'reff_no' => 'INV-2026-0002',
+    'payment_link_type' => 'items',
     'items' => [
-        ['name' => 'Product A', 'quantity' => 1, 'unit_price' => Amount::rupiah(150_000)],
+        ['name' => 'Product A', 'quantity' => 2, 'unit_price' => 25_000],
+        ['name' => 'Discount', 'quantity' => 1, 'unit_price' => -5_000],
     ],
-    'expired_at' => (string) app(\Aliziodev\Singapay\Support\JakartaClock::class)
-        ->toMilliseconds(now()->addDay()),  // 13-digit milliseconds!
 ]);
 
 $response->data('payment_url');

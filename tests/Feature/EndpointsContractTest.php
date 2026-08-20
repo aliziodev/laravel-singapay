@@ -58,9 +58,10 @@ it('calls the documented endpoint', function (Closure $call, string $method, str
     // Payment links
     'payment links list' => [fn (SingaPay $sp) => $sp->paymentLinks()->list(), 'GET', PAYMENT_HOST.'/api/v1.0/payment-link-manage/'.ACC],
     'payment links methods' => [fn (SingaPay $sp) => $sp->paymentLinks()->paymentMethods(), 'GET', PAYMENT_HOST.'/api/v1.0/payment-link-manage/payment-methods'],
-    'payment links create' => [fn (SingaPay $sp) => $sp->paymentLinks()->create(['reff_no' => 'INV-1']), 'POST', PAYMENT_HOST.'/api/v1.0/payment-link-manage/'.ACC],
-    'payment links find' => [fn (SingaPay $sp) => $sp->paymentLinks()->find(103), 'GET', PAYMENT_HOST.'/api/v1.0/payment-link-manage/'.ACC.'/103'],
-    'payment links update' => [fn (SingaPay $sp) => $sp->paymentLinks()->update(103, ['status' => 'open', 'max_usage' => 5]), 'PUT', PAYMENT_HOST.'/api/v1.0/payment-link-manage/'.ACC.'/103'],
+    'payment links create' => [fn (SingaPay $sp) => $sp->paymentLinks()->create(['reff_no' => 'INV-1', 'payment_link_type' => 'total', 'total_amount' => 10000]), 'POST', PAYMENT_HOST.'/api/v2.0/payment-link/'.ACC],
+    // v2 show and update resolve the owning account from the link itself.
+    'payment links find' => [fn (SingaPay $sp) => $sp->paymentLinks()->find(103), 'GET', PAYMENT_HOST.'/api/v2.0/payment-link/103'],
+    'payment links update' => [fn (SingaPay $sp) => $sp->paymentLinks()->update(103, ['status' => 'open', 'max_usage' => 5]), 'PUT', PAYMENT_HOST.'/api/v2.0/payment-link/update/103'],
     'payment links delete' => [fn (SingaPay $sp) => $sp->paymentLinks()->delete(103), 'DELETE', PAYMENT_HOST.'/api/v1.0/payment-link-manage/'.ACC.'/103'],
 
     // Payment link histories

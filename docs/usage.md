@@ -84,12 +84,12 @@ $charge->data('...');      // akses penuh ke response
 |---|---|---|---|---|
 | `amount` | ✅ wajib | ✅ wajib | ✅ wajib | ✅ wajib |
 | `reference` | ✅ wajib (`reff_no`) | opsional | opsional | opsional |
-| `expires_at` | → ms 13 digit | → ms 13 digit (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
+| `expires_at` | → ISO 8601 | → ms 13 digit (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
 | `bank_code` | — | ✅ wajib | — | — |
 | `vendor` | — | — | — | ✅ wajib (mis. `DANA`) |
 | `customer` | — | `name` → nama VA | — | `customer_*` |
-| `title`, `items`, `max_usage` | ✅ (items disintesis bila kosong) | `max_usage` | — | — |
-| `redirect_url` | ✅ | — | — | → `merchant_redirect_url` |
+| `title`, `items`, `max_usage` | ✅ (`title` → `description`; `items` opsional — v2 menghitung totalnya sendiri) | `max_usage` | — | — |
+| `redirect_url` | → `success_redirect_url` | — | — | → `merchant_redirect_url` |
 | `options` | escape hatch: field mentah yang di-merge terakhir ke payload | ⬅ sama | ⬅ sama | ⬅ sama |
 
 Input yang tidak bisa dipetakan (metode tak dikenal, field wajib hilang, `amount` float) melempar `ChargeException` **sebelum** ada traffic keluar. VA tanpa `expires_at` dibuat `permanent`; dengan `expires_at` menjadi `temporary` + `max_usage` (default 1).
@@ -98,17 +98,26 @@ Input yang tidak bisa dipetakan (metode tak dikenal, field wajib hilang, `amount
 
 ### Payment Link
 
+`create()`, `find()`, dan `update()` memakai **API v2** — spec gateway menandai padanan v1-nya sebagai "Legacy". `list()`, `delete()`, dan `paymentMethods()` tetap v1 karena v2 tidak punya padanannya.
+
 ```php
+// Bentuk "total": kirim nominalnya, tidak perlu items sama sekali.
 $response = SingaPay::paymentLinks()->create([
     'reff_no' => 'INV-2026-0001',      // maks 40 char, tanpa spasi/slash
-    'title' => 'Invoice #0001',
-    'max_usage' => 1,
-    'total_amount' => Amount::rupiah(150_000), // harus = jumlah subtotal items
+    'payment_link_type' => 'total',
+    'total_amount' => Amount::rupiah(150_000),
+    'max_usage' => 1,                  // default 1; 0 = tanpa batas
+    'expired_at' => now()->addDay()->toIso8601String(), // string tanggal biasa
+]);
+
+// Bentuk "items": gateway yang menjumlahkan. Harga negatif = diskon.
+SingaPay::paymentLinks()->create([
+    'reff_no' => 'INV-2026-0002',
+    'payment_link_type' => 'items',
     'items' => [
-        ['name' => 'Produk A', 'quantity' => 1, 'unit_price' => Amount::rupiah(150_000)],
+        ['name' => 'Produk A', 'quantity' => 2, 'unit_price' => 25_000],
+        ['name' => 'Diskon', 'quantity' => 1, 'unit_price' => -5_000],
     ],
-    'expired_at' => (string) app(\Aliziodev\Singapay\Support\JakartaClock::class)
-        ->toMilliseconds(now()->addDay()),  // 13 digit milidetik!
 ]);
 
 $response->data('payment_url');

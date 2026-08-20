@@ -92,24 +92,27 @@ class Charges
     private function createPaymentLink(array $data, Amount $amount, ?string $accountId): Response
     {
         $reference = (string) $this->requireField(PaymentMethod::PaymentLink, $data, 'reference');
-        $title = isset($data['title']) ? (string) $data['title'] : "Payment {$reference}";
 
-        $payload = [
-            'reff_no' => $reference,
-            'title' => $title,
-            'max_usage' => (int) ($data['max_usage'] ?? 1),
-            'total_amount' => $amount->value,
-            // A single synthesized item keeps the gateway's total==sum(items)
-            // rule satisfied when the caller doesn't manage items themselves.
-            'items' => $data['items'] ?? [['name' => $title, 'quantity' => 1, 'unit_price' => $amount->value]],
-        ];
+        // v2 computes the total from `items` when asked to, so line items no
+        // longer have to be synthesized just to satisfy a total==sum rule.
+        $payload = isset($data['items'])
+            ? ['payment_link_type' => 'items', 'items' => $data['items']]
+            : ['payment_link_type' => 'total', 'total_amount' => $amount->value];
+
+        $payload['reff_no'] = $reference;
+        $payload['max_usage'] = (int) ($data['max_usage'] ?? 1);
+
+        if (isset($data['title'])) {
+            $payload['description'] = (string) $data['title'];
+        }
 
         if (($expires = $this->expiresAt($data)) instanceof CarbonImmutable) {
-            $payload['expired_at'] = (string) $this->clock->toMilliseconds($expires);
+            // v2 takes any parseable date string; v1 wanted 13-digit millis.
+            $payload['expired_at'] = $expires->toIso8601String();
         }
 
         if (isset($data['redirect_url'])) {
-            $payload['redirect_url'] = $data['redirect_url'];
+            $payload['success_redirect_url'] = $data['redirect_url'];
         }
 
         return $this->singapay->paymentLinks()->create($this->withOptions($payload, $data), $accountId);

@@ -107,7 +107,7 @@ class SingaPayFake extends SingaPay
     {
         $this->fakeClient->assertSent(
             fn (ApiRequest $request): bool => $request->method === 'POST'
-                && Str::is('/api/v1.0/payment-link-manage/*', $request->path)
+                && Str::is('/api/v2.0/payment-link/*', $request->path)
                 && ($callback === null || $callback($request->body ?? []))
         );
     }

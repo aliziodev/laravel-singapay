@@ -46,9 +46,9 @@ and an **integer** on the identity host. The SDK casts defensively.
 | GET | `/api/v1.0/statements/{account_id}/{statement_id}` | `statements()->find()` |
 | GET | `/api/v1.0/payment-link-manage/{account_id}` | `paymentLinks()->list()` |
 | GET | `/api/v1.0/payment-link-manage/payment-methods` | `paymentLinks()->paymentMethods()` |
-| POST | `/api/v1.0/payment-link-manage/{account_id}` | `paymentLinks()->create()` |
-| GET | `/api/v1.0/payment-link-manage/{account_id}/{payment_link_id}` | `paymentLinks()->find()` |
-| PUT | `/api/v1.0/payment-link-manage/{account_id}/{payment_link_id}` | `paymentLinks()->update()` |
+| POST | `/api/v2.0/payment-link/{account_id}` | `paymentLinks()->create()` |
+| GET | `/api/v2.0/payment-link/{payment_link_id}` | `paymentLinks()->find()` |
+| PUT | `/api/v2.0/payment-link/update/{payment_link_id}` | `paymentLinks()->update()` |
 | DELETE | `/api/v1.0/payment-link-manage/{account_id}/{payment_link_id}` | `paymentLinks()->delete()` |
 | GET | `/api/v1.0/payment-link-histories/{account_id}` | `paymentLinkHistories()->list()` |
 | GET | `/api/v1.0/payment-link-histories/{account_id}/{history_id}` | `paymentLinkHistories()->find()` |
@@ -293,15 +293,17 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     Sending only `status` fails with `422 {"amount": ["Amount is required"]}`;
     both together succeed.
 
-29. **A whole v2 Payment Link API exists and the SDK does not cover it.**
+29. **The SDK now uses the v2 Payment Link API for create/show/update.**
     `merchant-api.json` documents `POST /api/v2.0/payment-link/{account_id}`
     (create), `GET /api/v2.0/payment-link/{link_id}` (show, no account id) and
     `PUT /api/v2.0/payment-link/update/{link_id}` (update). All three verified
     working in sandbox 2026-08-21; created links record `source: "api v2"`.
     It is materially better than v1: `payment_link_type: total|items` removes
     the need to synthesise an `items` array just to satisfy `total_amount`,
-    and the update accepts partial fields where v1 requires `status` and
-    silently ignores everything else.
+    `expired_at` takes an ordinary date string instead of 13-digit
+    milliseconds, and the update accepts partial fields where v1 requires
+    `status` and silently ignores everything else. `list()`, `delete()` and
+    `paymentMethods()` stay on v1 — v2 has no equivalent.
 
 30. **Spec-vs-SDK sweep** (`merchant-api.json`, 71 operations). Besides the v2
     payment link group, the spec also carries v1 alternatives the SDK does not

@@ -25,7 +25,7 @@ it('records requests without touching HTTP', function (): void {
     Http::fake();
     $fake = SingaPay::fake();
 
-    SingaPay::paymentLinks()->create(['reff_no' => 'INV-001', 'total_amount' => 10000]);
+    SingaPay::paymentLinks()->create(['reff_no' => 'INV-001', 'payment_link_type' => 'total', 'total_amount' => 10000]);
 
     Http::assertNothingSent();
 
@@ -35,7 +35,7 @@ it('records requests without touching HTTP', function (): void {
 
 it('returns fixture data for matching paths', function (): void {
     SingaPay::fake([
-        '*payment-link-manage*' => ['payment_url' => 'https://pay.test/abc'],
+        '*payment-link*' => ['payment_url' => 'https://pay.test/abc'],
     ]);
 
     $response = SingaPay::paymentLinks()->create(['reff_no' => 'INV-1']);

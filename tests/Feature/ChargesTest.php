@@ -44,14 +44,17 @@ it('maps a payment link charge onto the documented payload', function (): void {
     Http::assertSent(function (Request $request): bool {
         $body = $request->data();
 
-        return str_ends_with($request->url(), '/api/v1.0/payment-link-manage/'.TestCase::ACCOUNT_ID)
+        return str_ends_with($request->url(), '/api/v2.0/payment-link/'.TestCase::ACCOUNT_ID)
             && $body['reff_no'] === 'INV-2026-0001'
-            && $body['title'] === 'Payment INV-2026-0001'
-            && $body['max_usage'] === 1
+            // v2 computes the total itself when given items, so a charge with
+            // only an amount asks for the `total` shape and sends no items.
+            && $body['payment_link_type'] === 'total'
             && $body['total_amount'] === 150000
-            && $body['items'] === [['name' => 'Payment INV-2026-0001', 'quantity' => 1, 'unit_price' => 150000]]
-            && $body['expired_at'] === CHARGE_EXPIRES_MS
-            && $body['redirect_url'] === 'https://gonsu.id/thanks';
+            && ! array_key_exists('items', $body)
+            && $body['max_usage'] === 1
+            // v2 takes a date string, not the 13-digit millis v1 demanded.
+            && $body['expired_at'] === '2026-08-20T12:00:00+07:00'
+            && $body['success_redirect_url'] === 'https://gonsu.id/thanks';
     });
 });
 
@@ -173,7 +176,7 @@ it('accepts an already prefixed e-wallet vendor', function (): void {
 
 it('exposes typed accessors for the payment artifact per method', function (): void {
     fakeGateway([
-        '*payment-link-manage*' => Http::response(['status' => 200, 'success' => true, 'data' => ['payment_url' => 'https://pay.test/pl']]),
+        '*payment-link*' => Http::response(['status' => 200, 'success' => true, 'data' => ['payment_url' => 'https://pay.test/pl']]),
         '*qris-dynamic*' => Http::response(['status' => 200, 'success' => true, 'data' => ['qr_data' => '000201QR']]),
         '*virtual-accounts*' => Http::response(['status' => 200, 'success' => true, 'data' => ['number' => '7872955146576837']]),
         '*create-order' => Http::response(['response_code' => 'SP000', 'response_message' => 'OK', 'data' => ['checkout_url' => 'https://pay.test/ew']]),
@@ -274,7 +277,7 @@ it('rejects unknown payment methods and invalid expiries', function (): void {
 
 it('works through the recording fake', function (): void {
     $fake = SingaPay::fake([
-        '*payment-link-manage*' => ['payment_url' => 'https://pay.test/faked'],
+        '*payment-link*' => ['payment_url' => 'https://pay.test/faked'],
     ]);
 
     $result = SingaPay::pay('pl', ['amount' => 25_000, 'reference' => 'INV-9']);

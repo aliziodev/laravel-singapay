@@ -61,7 +61,7 @@ it('retries idempotent GET requests on server errors', function (): void {
 it('never retries write requests', function (): void {
     Http::fake([
         ...tokenEndpointFixtures(),
-        '*payment-link-manage*' => Http::response('server error', 500),
+        '*payment-link*' => Http::response('server error', 500),
     ]);
 
     expect(fn () => SingaPay::paymentLinks()->create(['reff_no' => 'INV-1'], 'ACC'))
@@ -234,7 +234,7 @@ it('caches the token manager double-check inside the lock', function (): void {
 it('wraps transport failures in the SDK connection exception', function (): void {
     Http::fake([
         ...tokenEndpointFixtures(),
-        '*payment-link-manage*' => fn () => throw new HttpConnectionException('DNS failure'),
+        '*payment-link*' => fn () => throw new HttpConnectionException('DNS failure'),
     ]);
 
     expect(fn () => SingaPay::paymentLinks()->create(['reff_no' => 'X'], 'ACC'))
