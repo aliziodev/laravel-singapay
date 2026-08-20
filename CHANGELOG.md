@@ -1,3 +1,8 @@
+## <small>1.4.3 (2026-08-20)</small>
+
+* fix: reject a verify-signature endpoint that lost its leading slash ([ef3d296](https://github.com/aliziodev/laravel-singapay/commit/ef3d296))
+* fix: route accounts()->updateStatus() through the path that exists ([b47bb1c](https://github.com/aliziodev/laravel-singapay/commit/b47bb1c))
+
 ## <small>1.4.2 (2026-08-20)</small>
 
 * Merge branch 'main' of https://github.com/aliziodev/laravel-singapay ([88fa01a](https://github.com/aliziodev/laravel-singapay/commit/88fa01a))
