@@ -93,13 +93,31 @@ it('marks the order paid when the VA is paid', function () {
 });
 ```
 
-## Housekeeping
+## The `WebhookEvent` model
 
-Rows in `singapay_webhook_events` are only needed for the duration of SingaPay's retry window (minutes). Prune them periodically:
+Every processed delivery is recorded as an Eloquent model, `Aliziodev\Singapay\Models\WebhookEvent` (casts: `payload` → array, `processed_at` → datetime):
 
 ```php
-Schedule::call(fn () => DB::table('singapay_webhook_events')
-    ->where('created_at', '<', now()->subWeek())
-    ->delete()
-)->daily();
+use Aliziodev\Singapay\Enums\WebhookType;
+use Aliziodev\Singapay\Models\WebhookEvent;
+
+// Inspect history
+WebhookEvent::ofType(WebhookType::Disbursement)->latest()->limit(20)->get();
+
+// Replay a delivery through your listeners
+event(WebhookEvent::find($id)->toEvent());
 ```
+
+`toEvent()` rebuilds the typed event object (e.g. `DisbursementProcessed`) from the stored payload — handy when a listener failed and you want to reprocess.
+
+## Housekeeping
+
+Rows are only needed for the duration of SingaPay's retry window (minutes). The model is `MassPrunable` — just schedule Laravel's standard pruner:
+
+```php
+use Aliziodev\Singapay\Models\WebhookEvent;
+
+Schedule::command('model:prune', ['--model' => [WebhookEvent::class]])->daily();
+```
+
+Retention defaults to 7 days, configurable via `SINGAPAY_WEBHOOK_PRUNE_DAYS` (config `singapay.webhooks.prune_after_days`).

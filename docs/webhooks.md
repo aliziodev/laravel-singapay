@@ -93,13 +93,31 @@ it('menandai order lunas saat VA dibayar', function () {
 });
 ```
 
-## Housekeeping
+## Model `WebhookEvent`
 
-Baris di `singapay_webhook_events` hanya dibutuhkan selama jendela retry SingaPay (menit-menitan). Aman dibersihkan berkala:
+Setiap delivery yang diproses tercatat sebagai model Eloquent `Aliziodev\Singapay\Models\WebhookEvent` (cast `payload` → array, `processed_at` → datetime):
 
 ```php
-Schedule::call(fn () => DB::table('singapay_webhook_events')
-    ->where('created_at', '<', now()->subWeek())
-    ->delete()
-)->daily();
+use Aliziodev\Singapay\Enums\WebhookType;
+use Aliziodev\Singapay\Models\WebhookEvent;
+
+// Inspeksi riwayat
+WebhookEvent::ofType(WebhookType::Disbursement)->latest()->limit(20)->get();
+
+// Replay sebuah delivery melalui listener Anda
+event(WebhookEvent::find($id)->toEvent());
 ```
+
+`toEvent()` membangun ulang objek event bertipe (mis. `DisbursementProcessed`) dari payload tersimpan — berguna saat listener dulu gagal dan Anda ingin memprosesnya ulang.
+
+## Housekeeping
+
+Baris di tabel hanya dibutuhkan selama jendela retry SingaPay (menit-menitan). Model sudah `MassPrunable` — cukup jadwalkan pruner standar Laravel:
+
+```php
+use Aliziodev\Singapay\Models\WebhookEvent;
+
+Schedule::command('model:prune', ['--model' => [WebhookEvent::class]])->daily();
+```
+
+Retensi default 7 hari, bisa diubah lewat `SINGAPAY_WEBHOOK_PRUNE_DAYS` (config `singapay.webhooks.prune_after_days`).

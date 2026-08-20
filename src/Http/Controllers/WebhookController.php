@@ -6,9 +6,9 @@ namespace Aliziodev\Singapay\Http\Controllers;
 
 use Aliziodev\Singapay\Enums\WebhookType;
 use Aliziodev\Singapay\Events\WebhookReceived;
+use Aliziodev\Singapay\Models\WebhookEvent;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,11 +18,11 @@ use Illuminate\Http\Request;
  *
  * Flow: identify the webhook type from the payload (never from the URL —
  * several types share one callback URL), skip duplicates via the
- * `singapay_webhook_events` table, then dispatch both the generic
+ * {@see WebhookEvent} idempotency ledger, then dispatch both the generic
  * {@see WebhookReceived} event and the type-specific event. Listeners run
  * synchronously; a listener that throws produces a 5xx, which makes
- * SingaPay retry the delivery — the record is only stored after listeners
- * succeed, preserving at-least-once semantics.
+ * SingaPay retry the delivery — the ledger row is only stored after
+ * listeners succeed, preserving at-least-once semantics.
  */
 final class WebhookController
 {
@@ -33,7 +33,6 @@ final class WebhookController
 
     public function __construct(
         private readonly SingaPayConfig $config,
-        private readonly ConnectionResolverInterface $db,
         private readonly Dispatcher $events,
     ) {}
 
@@ -71,10 +70,7 @@ final class WebhookController
 
     private function alreadyProcessed(string $eventId): bool
     {
-        return $this->db->connection()
-            ->table(self::TABLE)
-            ->where('event_id', $eventId)
-            ->exists();
+        return WebhookEvent::query()->where('event_id', $eventId)->exists();
     }
 
     /**
@@ -83,13 +79,11 @@ final class WebhookController
     private function markProcessed(string $eventId, ?WebhookType $type, array $payload): void
     {
         try {
-            $this->db->connection()->table(self::TABLE)->insert([
+            WebhookEvent::query()->create([
                 'event_id' => $eventId,
                 'event_type' => $type?->value,
-                'payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                'payload' => $payload,
                 'processed_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         } catch (UniqueConstraintViolationException) {
             // A concurrent delivery of the same event won the race; both

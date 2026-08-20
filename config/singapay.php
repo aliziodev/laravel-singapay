@@ -117,6 +117,9 @@ return [
         'tolerance' => (int) env('SINGAPAY_WEBHOOK_TOLERANCE', 300),
         'idempotency' => (bool) env('SINGAPAY_WEBHOOK_IDEMPOTENCY', true),
         'middleware' => [],
+        // Retention for the WebhookEvent pruner (`php artisan model:prune`);
+        // rows are only needed for SingaPay's retry window (minutes).
+        'prune_after_days' => (int) env('SINGAPAY_WEBHOOK_PRUNE_DAYS', 7),
     ],
 
     /*
