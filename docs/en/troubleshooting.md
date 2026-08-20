@@ -24,7 +24,14 @@ SingaPay only accepts requests from IPs registered in the merchant dashboard.
 
 - Find your server's public egress IP (`curl https://api.ipify.org`) and register it.
 - **Vercel, Netlify, Cloudflare Workers, and other serverless platforms use dynamic egress IPs — they cannot be whitelisted.** Your options: (a) deploy the backend on a static-IP VPS/host, (b) route SingaPay calls through a static-IP proxy, (c) your platform's paid static-egress feature.
-- `php artisan singapay:ping` detects SP017 and prints this diagnosis.
+- `php artisan singapay:ping` detects this condition and prints the diagnosis above.
+- An IP rejection usually does **not** arrive as SP017. A non-whitelisted server is turned away at the token exchange, and that endpoint answers a bare HTTP 403 with no SP code at all:
+
+  ```json
+  {"status":403,"success":false,"error":{"code":403,"message":"Your IP address (1.2.3.4) is not registered"}}
+  ```
+
+  The SDK recognises both shapes and still raises `IpNotWhitelistedException` — its message quotes the rejected IP, which is exactly the address you need to register.
 
 ## Webhooks
 

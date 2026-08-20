@@ -141,3 +141,19 @@ it('rejects payloads with floats in singapay:verify-signature', function (): voi
 
     unlink((string) $file);
 });
+
+it('diagnoses the IP whitelist failure when it happens during the token exchange', function (): void {
+    // A non-whitelisted server never reaches balance-inquiry — it is turned
+    // away at the token endpoint, with a bare 403 instead of SP017.
+    Http::fake([
+        '*access-token*' => Http::response([
+            'status' => 403,
+            'success' => false,
+            'error' => ['code' => 403, 'message' => 'Your IP address (182.10.100.149) is not registered'],
+        ], 403),
+    ]);
+
+    $this->artisan('singapay:ping')
+        ->expectsOutputToContain('egress IP')
+        ->assertFailed();
+});

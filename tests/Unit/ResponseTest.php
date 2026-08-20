@@ -103,3 +103,32 @@ it('does not misread an unknown response_code as success', function (): void {
     expect($response->code)->toBeNull()
         ->and($response->successful())->toBeFalse();
 });
+
+it('recognises the bare 403 the token endpoint returns for a non-whitelisted IP', function (): void {
+    // Verbatim body captured from the SingaPay sandbox: no SP017 anywhere.
+    $response = Response::fromHttp(httpResponse(403, [
+        'status' => 403,
+        'success' => false,
+        'error' => ['code' => 403, 'message' => 'Your IP address (182.10.100.149) is not registered'],
+    ]));
+
+    expect($response->rejectedIp())->toBeTrue()
+        ->and($response->code)->toBeNull();
+});
+
+it('recognises SP017 as an IP rejection', function (): void {
+    $response = Response::fromHttp(httpResponse(403, [
+        'response_code' => 'SP017',
+        'response_message' => 'Unauthorized IP',
+    ]));
+
+    expect($response->rejectedIp())->toBeTrue();
+});
+
+it('does not mistake other failures for an IP rejection', function (string $body, int $status): void {
+    expect(Response::fromHttp(httpResponse($status, json_decode($body, true)))->rejectedIp())->toBeFalse();
+})->with([
+    'permission 403' => ['{"status":403,"success":false,"error":{"code":403,"message":"You are not allowed to access this account"}}', 403],
+    'expired credentials' => ['{"status":401,"success":false,"error":{"code":401,"message":"Your IP address is not registered"}}', 401],
+    'successful call' => ['{"status":200,"success":true,"data":{}}', 200],
+]);

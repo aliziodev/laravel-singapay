@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Aliziodev\Singapay\Auth\AccessTokenManager;
 use Aliziodev\Singapay\Enums\Host;
 use Aliziodev\Singapay\Exceptions\AuthenticationException;
+use Aliziodev\Singapay\Exceptions\IpNotWhitelistedException;
 use Aliziodev\Singapay\Tests\TestCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
@@ -145,3 +146,18 @@ it('throws AuthenticationException when the response has no token', function ():
 
     app(AccessTokenManager::class)->token();
 })->throws(AuthenticationException::class);
+
+it('raises IpNotWhitelistedException when the token endpoint rejects the server IP', function (): void {
+    // The real sandbox answers a bare HTTP 403 here — no SP017 — so a
+    // non-whitelisted server would otherwise only ever see a generic
+    // authentication failure and chase the wrong cause.
+    Http::fake([
+        '*access-token*' => Http::response([
+            'status' => 403,
+            'success' => false,
+            'error' => ['code' => 403, 'message' => 'Your IP address (182.10.100.149) is not registered'],
+        ], 403),
+    ]);
+
+    app(AccessTokenManager::class)->token();
+})->throws(IpNotWhitelistedException::class, 'egress IP');

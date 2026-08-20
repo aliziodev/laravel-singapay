@@ -235,7 +235,7 @@ Semua exception SDK turunan `Aliziodev\Singapay\Exceptions\SingaPayException`:
 | ↳ `DuplicateReferenceException` | SP004 |
 | ↳ `AuthenticationException` | SP013 setelah refresh token sekali |
 | ↳ `InvalidSignatureException` | SP016 — bug sisi pemanggil; lihat [troubleshooting](troubleshooting.md) |
-| ↳ `IpNotWhitelistedException` | SP017 |
+| ↳ `IpNotWhitelistedException` | SP017, atau HTTP 403 "IP … not registered" dari endpoint token |
 | ↳ `ValidationException` | SP018 (punya `->errors()`) |
 | `MoneyOutDisabledException` | Operasi money-out saat guard mati |
 | `WebhookVerificationException` | Webhook masuk gagal diverifikasi |

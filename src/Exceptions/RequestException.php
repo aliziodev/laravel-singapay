@@ -31,7 +31,12 @@ class RequestException extends SingaPayException
      */
     public static function fromResponse(Response $response): self
     {
-        $class = $response->code?->exceptionClass() ?? self::class;
+        // The IP check comes first: SingaPay rejects a non-whitelisted
+        // caller with a bare HTTP 403 on some hosts and SP017 on others,
+        // and only Response knows how to recognise both shapes.
+        $class = $response->rejectedIp()
+            ? IpNotWhitelistedException::class
+            : $response->code?->exceptionClass() ?? self::class;
 
         /** @var self $exception */
         $exception = new $class($response, $class::buildMessage($response));

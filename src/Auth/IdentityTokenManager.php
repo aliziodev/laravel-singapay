@@ -8,6 +8,8 @@ use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
 use Aliziodev\Singapay\Enums\Host;
 use Aliziodev\Singapay\Exceptions\AuthenticationException;
 use Aliziodev\Singapay\Exceptions\ConnectionException;
+use Aliziodev\Singapay\Exceptions\IpNotWhitelistedException;
+use Aliziodev\Singapay\Exceptions\RequestException;
 use Aliziodev\Singapay\Http\Response;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Http\Client\ConnectionException as HttpConnectionException;
@@ -40,6 +42,7 @@ final class IdentityTokenManager
      * cached token is missing or expired.
      *
      * @throws AuthenticationException When the KYC service rejects the credentials.
+     * @throws IpNotWhitelistedException When SingaPay rejects this server's IP.
      * @throws ConnectionException When the KYC service cannot be reached.
      */
     public function token(): string
@@ -75,6 +78,7 @@ final class IdentityTokenManager
      * @return array{0: string, 1: int} The token and its cache TTL in seconds.
      *
      * @throws AuthenticationException
+     * @throws IpNotWhitelistedException
      * @throws ConnectionException
      */
     private function exchangeCredentials(): array
@@ -104,6 +108,12 @@ final class IdentityTokenManager
         $result = Response::fromHttp($response);
 
         if ($result->failed() || ! is_string($result->data('access_token'))) {
+            // As on the payment host, an IP rejection lands here rather than
+            // on a transactional call — keep the diagnosis intact.
+            if ($result->rejectedIp()) {
+                throw RequestException::fromResponse($result);
+            }
+
             throw new AuthenticationException(
                 $result,
                 "SingaPay identity token exchange failed [HTTP {$result->status}]: {$result->message}"

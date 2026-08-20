@@ -69,3 +69,17 @@ it('falls back to the HTTP status when no SP code is present', function (): void
 
     expect(RequestException::fromResponse($response)->getMessage())->toContain('HTTP 503');
 });
+
+it('explains the serverless IP problem on a bare 403 with no SP code', function (): void {
+    $exception = RequestException::fromResponse(new Response(
+        status: 403,
+        code: null,
+        message: 'Your IP address (182.10.100.149) is not registered',
+        data: [],
+        raw: ['status' => 403, 'success' => false, 'error' => ['code' => 403, 'message' => 'Your IP address (182.10.100.149) is not registered']],
+    ));
+
+    expect($exception)->toBeInstanceOf(IpNotWhitelistedException::class)
+        ->and($exception->getMessage())->toContain('182.10.100.149')
+        ->and($exception->getMessage())->toContain('egress IP');
+});

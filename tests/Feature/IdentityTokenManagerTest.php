@@ -7,6 +7,7 @@ use Aliziodev\Singapay\Auth\IdentityTokenManager;
 use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
 use Aliziodev\Singapay\Exceptions\AuthenticationException;
 use Aliziodev\Singapay\Exceptions\ConnectionException;
+use Aliziodev\Singapay\Exceptions\IpNotWhitelistedException;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException as HttpConnectionException;
@@ -103,3 +104,15 @@ it('wraps transport failures in the SDK connection exception', function (): void
 
     app(IdentityTokenManager::class)->token();
 })->throws(ConnectionException::class, 'Unable to reach SingaPay');
+
+it('raises IpNotWhitelistedException when the identity host rejects the server IP', function (): void {
+    Http::fake([
+        '*get-auth-token*' => Http::response([
+            'status' => 403,
+            'success' => false,
+            'error' => ['code' => 403, 'message' => 'Your IP address (182.10.100.149) is not registered'],
+        ], 403),
+    ]);
+
+    app(IdentityTokenManager::class)->token();
+})->throws(IpNotWhitelistedException::class, 'egress IP');

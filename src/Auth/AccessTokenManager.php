@@ -8,6 +8,8 @@ use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
 use Aliziodev\Singapay\Enums\Host;
 use Aliziodev\Singapay\Exceptions\AuthenticationException;
 use Aliziodev\Singapay\Exceptions\ConnectionException;
+use Aliziodev\Singapay\Exceptions\IpNotWhitelistedException;
+use Aliziodev\Singapay\Exceptions\RequestException;
 use Aliziodev\Singapay\Http\Response;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Http\Client\ConnectionException as HttpConnectionException;
@@ -47,6 +49,7 @@ final class AccessTokenManager
      * when the cached token is missing or expired.
      *
      * @throws AuthenticationException When SingaPay rejects the credentials.
+     * @throws IpNotWhitelistedException When SingaPay rejects this server's IP.
      * @throws ConnectionException When the token endpoint cannot be reached.
      */
     public function token(Host $host = Host::Payment): string
@@ -86,6 +89,7 @@ final class AccessTokenManager
      * @return array{0: string, 1: int} The token and its cache TTL in seconds.
      *
      * @throws AuthenticationException
+     * @throws IpNotWhitelistedException
      * @throws ConnectionException
      */
     private function requestToken(Host $host): array
@@ -104,6 +108,14 @@ final class AccessTokenManager
         $result = Response::fromHttp($response);
 
         if ($result->failed() || ! is_string($result->data('access_token'))) {
+            // A non-whitelisted server never gets past the token exchange, so
+            // this is where an IP rejection actually surfaces in practice.
+            // Raise the dedicated exception rather than a generic auth
+            // failure — the cause and the fix are completely different.
+            if ($result->rejectedIp()) {
+                throw RequestException::fromResponse($result);
+            }
+
             throw new AuthenticationException(
                 $result,
                 "SingaPay access-token request failed [HTTP {$result->status}]: {$result->message}"

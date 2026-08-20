@@ -119,6 +119,32 @@ final readonly class Response implements Arrayable
     }
 
     /**
+     * Whether the gateway rejected this server's IP address.
+     *
+     * SingaPay reports the same condition two different ways. Transactional
+     * endpoints answer SP017 inside the v2 envelope, but the access-token
+     * endpoints — the first call any integration makes, and therefore the
+     * one a non-whitelisted server actually hits — reject with a bare HTTP
+     * 403 carrying no SP code at all:
+     *
+     * ```json
+     * {"status":403,"success":false,
+     *  "error":{"code":403,"message":"Your IP address (1.2.3.4) is not registered"}}
+     * ```
+     *
+     * Matching the message is the only signal available for that shape.
+     */
+    public function rejectedIp(): bool
+    {
+        if ($this->code === ResponseCode::UnauthorizedIp) {
+            return true;
+        }
+
+        return $this->status === 403
+            && preg_match('/\bip\b.*\bnot (registered|whitelisted|allowed)\b/i', $this->message) === 1;
+    }
+
+    /**
      * Retrieve a value from the `data` section using dot notation.
      *
      * ```php

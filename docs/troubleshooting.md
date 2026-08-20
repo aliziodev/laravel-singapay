@@ -24,7 +24,14 @@ SingaPay hanya menerima request dari IP yang terdaftar di dashboard merchant.
 
 - Cari IP egress publik server Anda (`curl https://api.ipify.org`) dan daftarkan.
 - **Vercel, Netlify, Cloudflare Workers, dan platform serverless lain memakai IP egress dinamis — tidak bisa di-whitelist.** Pilihan Anda: (a) deploy backend di VPS/host ber-IP statis, (b) rutekan panggilan SingaPay lewat proxy ber-IP statis, (c) fitur static-egress berbayar dari platform Anda.
-- `php artisan singapay:ping` mendeteksi SP017 dan mencetak diagnosis ini.
+- `php artisan singapay:ping` mendeteksi kondisi ini dan mencetak diagnosis di atas.
+- Penolakan IP paling sering muncul **bukan** sebagai SP017. Server yang belum di-whitelist ditolak sudah di tahap tukar token, dan endpoint itu menjawab HTTP 403 polos tanpa kode SP sama sekali:
+
+  ```json
+  {"status":403,"success":false,"error":{"code":403,"message":"Your IP address (1.2.3.4) is not registered"}}
+  ```
+
+  SDK mengenali kedua bentuk itu dan tetap melempar `IpNotWhitelistedException` — pesannya memuat IP yang ditolak, jadi itulah alamat yang perlu Anda daftarkan.
 
 ## Webhook
 
