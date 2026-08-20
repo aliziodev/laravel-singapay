@@ -35,7 +35,7 @@ and an **integer** on the identity host. The SDK casts defensively.
 | POST | `/api/v1.0/accounts` | `accounts()->create()` |
 | GET | `/api/v1.0/accounts/{id}` | `accounts()->find()` |
 | PATCH | `/api/v1.0/accounts/update/{id}` | `accounts()->update()` |
-| PATCH | `/api/v1.0/accounts/update-status/{id}` | `accounts()->updateStatus()` |
+| ~~PATCH~~ | ~~`/api/v1.0/accounts/update-status/{id}`~~ | route does not exist (404) — `accounts()->updateStatus()` uses `update/{id}` |
 | DELETE | `/api/v1.0/accounts/{id}` | `accounts()->delete()` |
 | GET | `/api/v1.0/balance-inquiry` | `balance()->merchant()` |
 | GET | `/api/v1.0/balance-inquiry/{account_id}` | `balance()->account()` |
@@ -165,7 +165,10 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
    verification instead; it is documented and works.
 3. **Account update**: docs say `PATCH /accounts/update/{id}` (name/status/
    invite_members); the OpenAPI spec says `PATCH /accounts/update-status/{id}`
-   (status only). The SDK exposes both.
+   (status only). Settled in sandbox 2026-08-21 — **the docs are right**:
+   `update/{id}` works and accepts a status change, while
+   `update-status/{id}` answers `404 The route ... could not be found`.
+   `updateStatus()` is now a thin wrapper over `update()`.
 4. **QRIS money-out inquiry-status**: the overview claims it needs the request
    signature, the endpoint page says it does not. The SDK follows the endpoint
    page (unsigned); verify in sandbox before production.
@@ -273,6 +276,15 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     `"1203500.00"` for the value the statement reported as integer
     `1203500`. Strict comparisons break; funnel every incoming amount
     through `Amount::from()`.
+
+25. **`paymentLinks()->update()` only moves the status.** `status`
+    (open|closed|expired) is required — omitting it fails with
+    `422 {"status": ["Status is required"]}` — and a `title` sent alongside it
+    is accepted but ignored. Treat everything else as write-once at creation.
+
+26. **`virtualAccounts()->update()` needs `status` *and* the amount fields.**
+    Sending only `status` fails with `422 {"amount": ["Amount is required"]}`;
+    both together succeed.
 
 24. **Settlement, as observed in sandbox** (partially answers discrepancy 9):
     VA transactions settle with `settlement_method: AUTO BALANCE` and

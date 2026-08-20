@@ -78,9 +78,15 @@ class PaymentLinks extends Endpoint
      *
      * `PUT /api/v1.0/payment-link-manage/{account_id}/{payment_link_id}`
      *
+     * In practice this endpoint only moves the status: sandbox accepted a
+     * `title` alongside `status` and left the title unchanged (verified
+     * 2026-08-21). Treat the other fields as write-once at creation.
+     *
      * @param  int  $paymentLinkId  Numeric `payment_links.id`.
-     * @param  array<string, mixed>  $data  Required: `max_usage` (>= current usage),
-     *                                      `status` (open|closed|expired). Optional fields as in {@see create()}.
+     * @param  array<string, mixed>  $data  Required: `status`
+     *                                      (open|closed|expired) — omitting it fails with
+     *                                      `422 {"status": ["Status is required"]}`. `max_usage` must be >= current
+     *                                      usage when supplied.
      * @param  string|null  $accountId  Account ULID.
      */
     public function update(int $paymentLinkId, array $data, ?string $accountId = null): Response

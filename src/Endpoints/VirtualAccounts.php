@@ -67,9 +67,12 @@ class VirtualAccounts extends Endpoint
      * `PUT /api/v1.0/virtual-accounts/{account_id}/{virtual_account_id}`
      *
      * @param  string  $virtualAccountId  The VA ULID.
-     * @param  array<string, mixed>  $data  Required: `status` (active|inactive|expired).
-     *                                      Conditional: `amount` (closed), `min_amount`/`max_amount` (open),
-     *                                      `expired_at` + `max_usage` (temporary). Optional: `name`.
+     * @param  array<string, mixed>  $data  Required: `status` (active|inactive|expired)
+     *                                      **and** the amount fields for the VA's amount type — both are enforced,
+     *                                      and each missing one is reported separately
+     *                                      (`422 {"amount": ["Amount is required"]}`). Conditional: `amount`
+     *                                      (closed), `min_amount`/`max_amount` (open), `expired_at` + `max_usage`
+     *                                      (temporary). Optional: `name`.
      * @param  string|null  $accountId  Account ULID.
      */
     public function update(string $virtualAccountId, array $data, ?string $accountId = null): Response

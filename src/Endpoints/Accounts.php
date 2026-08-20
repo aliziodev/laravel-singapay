@@ -68,16 +68,20 @@ class Accounts extends Endpoint
     }
 
     /**
-     * Update only a sub-account's status (legacy path from the OpenAPI spec).
+     * Update only a sub-account's status.
      *
-     * `PATCH /api/v1.0/accounts/update-status/{id}`
+     * `PATCH /api/v1.0/accounts/update/{id}` — a convenience wrapper over
+     * {@see update()}. The OpenAPI spec advertises a separate
+     * `accounts/update-status/{id}` route, but it does not exist: sandbox
+     * answers `404 The route ... could not be found`, while `update/{id}`
+     * accepts a status change. Verified 2026-08-21.
      *
      * @param  string  $accountId  Account ULID.
      * @param  string  $status  `active` or `inactive`.
      */
     public function updateStatus(string $accountId, string $status): Response
     {
-        return $this->send(new ApiRequest('PATCH', "/api/v1.0/accounts/update-status/{$this->segment($accountId)}", body: ['status' => $status]));
+        return $this->update($accountId, ['status' => $status]);
     }
 
     /**

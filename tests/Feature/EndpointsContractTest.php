@@ -38,7 +38,8 @@ it('calls the documented endpoint', function (Closure $call, string $method, str
     'accounts create' => [fn (SingaPay $sp) => $sp->accounts()->create(['name' => 'Store']), 'POST', PAYMENT_HOST.'/api/v1.0/accounts'],
     'accounts find' => [fn (SingaPay $sp) => $sp->accounts()->find('01J0EXAMPLE'), 'GET', PAYMENT_HOST.'/api/v1.0/accounts/01J0EXAMPLE'],
     'accounts update' => [fn (SingaPay $sp) => $sp->accounts()->update('01J0EXAMPLE', ['name' => 'New']), 'PATCH', PAYMENT_HOST.'/api/v1.0/accounts/update/01J0EXAMPLE'],
-    'accounts update status' => [fn (SingaPay $sp) => $sp->accounts()->updateStatus('01J0EXAMPLE', 'inactive'), 'PATCH', PAYMENT_HOST.'/api/v1.0/accounts/update-status/01J0EXAMPLE'],
+    // update-status/{id} does not exist on the gateway; updateStatus() goes through update/{id}.
+    'accounts update status' => [fn (SingaPay $sp) => $sp->accounts()->updateStatus('01J0EXAMPLE', 'inactive'), 'PATCH', PAYMENT_HOST.'/api/v1.0/accounts/update/01J0EXAMPLE'],
     'accounts delete' => [fn (SingaPay $sp) => $sp->accounts()->delete('01J0EXAMPLE'), 'DELETE', PAYMENT_HOST.'/api/v1.0/accounts/01J0EXAMPLE'],
 
     // Balance
