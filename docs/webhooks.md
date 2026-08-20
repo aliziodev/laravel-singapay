@@ -12,13 +12,23 @@
 
 ## Konfigurasi di dashboard SingaPay
 
-Dashboard menyediakan **enam kolom Notif URL terpisah** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, dan Subscription Cycle. Arahkan semuanya ke route yang sama:
+Dashboard menyediakan **delapan kolom Notif URL terpisah** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, Subscription Cycle, Settlement, dan Direct Debit. Arahkan semuanya ke route yang sama:
 
 ```
 https://app-anda.com/webhooks/singapay
 ```
 
-Satu route sudah cukup: controller mengenali tipe dari payload, bukan dari URL.
+Satu route sudah cukup: controller mengenali tipe dari payload, bukan dari URL. Catatan dari dashboard: binding dan unbinding direct debit selalu memakai URL Direct Debit tingkat merchant, bukan URL per akun.
+
+### Sandbox: pembayaran dari Simulator belum tentu memicu webhook
+
+Diuji pada 2026-08-21 dengan Notif URL terisi benar dan tanda tangan terbukti valid: **tujuh** pembayaran VA lewat Simulator dashboard tidak menghasilkan satu pun delivery `va-transaction`. Pada saat yang sama, delivery `transaction-expiration` yang bertanda tangan **berhasil** masuk ke URL yang persis sama dan lolos verifikasi — jadi URL, tanda tangan, dan penerimanya jelas bekerja.
+
+Halaman akun juga punya panel **Notification Configuration** (VA Transaction Paid, Payment Link Paid, Disbursement Success, dan seterusnya) yang semua toggle-nya default mati. Menyalakan semuanya **tidak** membuat webhook money-in terkirim. Panel itu berada satu halaman dengan **Notification Email**, jadi kemungkinan besar yang diaturnya adalah notifikasi email, bukan webhook — tapi ini belum dikonfirmasi SingaPay.
+
+Yang perlu Anda lakukan: jangan berasumsi integrasi Anda rusak hanya karena webhook money-in tidak datang di sandbox. Buktikan dulu jalur penerimaannya dengan delivery bertanda tangan yang Anda kirim sendiri (lihat [Menguji listener Anda](#menguji-listener-anda)), lalu tanyakan ke SingaPay apakah notifikasi money-in memang dikirim untuk pembayaran Simulator.
+
+Satu toggle yang layak dinyalakan apa pun jawabannya: **Callback to Merchant Failed** — itu yang memberi tahu Anda kalau SingaPay gagal menjangkau server Anda.
 
 ### Kunci penanda tangan: Client Secret
 

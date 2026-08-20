@@ -12,13 +12,23 @@
 
 ## SingaPay dashboard configuration
 
-The dashboard exposes **six separate Notif URL fields** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, and Subscription Cycle. Point every one of them at the same route:
+The dashboard exposes **eight separate Notif URL fields** — Transaction (Money In), Disbursement (Money Out), Payment Link Inquiry, Product Expiration, Transaction Expiration, Subscription Cycle, Settlement, and Direct Debit. Point every one of them at the same route:
 
 ```
 https://your-app.com/webhooks/singapay
 ```
 
-One route is enough: the controller identifies the type from the payload, never from the URL.
+One route is enough: the controller identifies the type from the payload, never from the URL. Per the dashboard, direct-debit binding and unbinding always use the merchant-level Direct Debit URL rather than any per-account one.
+
+### Sandbox: Simulator payments may not fire a webhook
+
+Tested 2026-08-21 with the Notif URLs correctly filled in and signature verification proven working: **seven** VA payments made through the dashboard Simulator produced no `va-transaction` delivery at all. In the same window a signed `transaction-expiration` delivery **did** arrive at the very same URL and verified cleanly — so the URL, the signature, and the receiver are all demonstrably fine.
+
+The account page also carries a **Notification Configuration** panel (VA Transaction Paid, Payment Link Paid, Disbursement Success, and so on) whose toggles all default to off. Turning every one of them on did **not** produce a money-in webhook. That panel sits on the same page as **Notification Email**, so it most likely governs email notifications rather than webhooks — but SingaPay has not confirmed this.
+
+What this means for you: do not assume your integration is broken just because money-in webhooks never arrive in sandbox. Prove the receiving path first with a signed delivery you generate yourself (see [Testing your listeners](#testing-your-listeners)), then ask SingaPay whether money-in notifications are emitted for Simulator payments at all.
+
+One toggle worth enabling either way: **Callback to Merchant Failed** — it is what tells you SingaPay could not reach your server.
 
 ### The signing key is the Client Secret
 

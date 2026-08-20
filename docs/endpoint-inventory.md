@@ -252,9 +252,18 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 21. **The dashboard "Test" button sends unsigned requests** — no
     `X-Signature`, `X-Timestamp` or `Authorization` at all, so a correctly
     configured app answers 401. Only real deliveries are signed. Callback URLs
-    are configured through six separate Notif URL fields (money in, money out,
-    payment link inquiry, product expiration, transaction expiration,
-    subscription cycle); pointing all six at one route is correct.
+    are configured through eight separate Notif URL fields (money in, money
+    out, payment link inquiry, product expiration, transaction expiration,
+    subscription cycle, settlement, direct debit); pointing all eight at one
+    route is correct.
+
+22. **Sandbox Simulator payments did not emit money-in webhooks.** Seven VA
+    payments, zero `va-transaction` deliveries, with the Money In Notif URL
+    set and signature verification proven working by a `transaction-expiration`
+    delivery that arrived at the same URL minutes earlier. The account page's
+    Notification Configuration toggles (all off by default) were enabled and
+    changed nothing; they sit beside Notification Email and most likely govern
+    email. Unresolved — ask SingaPay.
 9. **Settlement schedule and rolling reserve are undocumented** — ask SingaPay
    directly before going to production.
 10. **"Default" vs "Specific" credentials are undocumented.** The dashboard's
