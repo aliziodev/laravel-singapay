@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Aliziodev\Singapay;
 
+use Aliziodev\Singapay\Charges\ChargeResult;
+use Aliziodev\Singapay\Charges\Charges;
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
+use Aliziodev\Singapay\Enums\PaymentMethod;
+use Aliziodev\Singapay\Support\JakartaClock;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 
 /**
@@ -27,6 +31,11 @@ class SingaPay
      * @var array<class-string, Endpoints\Endpoint>
      */
     private array $endpoints = [];
+
+    /**
+     * Lazily built unified charge API.
+     */
+    private ?Charges $charges = null;
 
     public function __construct(
         protected readonly SingaPayClientInterface $client,
@@ -145,6 +154,33 @@ class SingaPay
     public function identity(): Endpoints\IdentityVerification
     {
         return $this->endpoint(Endpoints\IdentityVerification::class);
+    }
+
+    /**
+     * The unified money-in charge API: one normalized input shape for
+     * payment links, virtual accounts, QRIS, and e-wallets.
+     */
+    public function charges(): Charges
+    {
+        return $this->charges ??= new Charges($this, new JakartaClock);
+    }
+
+    /**
+     * Create a charge on any money-in method. Shorthand for
+     * `charges()->create(...)`.
+     *
+     * ```php
+     * SingaPay::pay('qris', ['amount' => 150_000, 'reference' => 'INV-1']);
+     * SingaPay::pay('va', ['amount' => 150_000, 'bank_code' => 'BRI']);
+     * ```
+     *
+     * @param  PaymentMethod|string  $method  Enum case or alias ("va", "qris", "pl", "ewallet", ...).
+     * @param  array<string, mixed>  $data  Normalized charge input — see {@see Charges}.
+     * @param  string|null  $accountId  Account ULID; defaults to `singapay.account_id`.
+     */
+    public function pay(PaymentMethod|string $method, array $data, ?string $accountId = null): ChargeResult
+    {
+        return $this->charges()->create($method, $data, $accountId);
     }
 
     /**

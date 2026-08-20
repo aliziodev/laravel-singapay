@@ -36,6 +36,8 @@ use RuntimeException;
  * @method static \Aliziodev\Singapay\Endpoints\CardlessWithdrawal cardlessWithdrawal()
  * @method static \Aliziodev\Singapay\Endpoints\Biller biller()
  * @method static \Aliziodev\Singapay\Endpoints\IdentityVerification identity()
+ * @method static \Aliziodev\Singapay\Charges\Charges charges()
+ * @method static \Aliziodev\Singapay\Charges\ChargeResult pay(\Aliziodev\Singapay\Enums\PaymentMethod|string $method, array<string, mixed> $data, string|null $accountId = null)
  * @method static \Aliziodev\Singapay\Contracts\SingaPayClientInterface client()
  * @method static \Aliziodev\Singapay\Support\SingaPayConfig config()
  * @method static void assertSent(string|callable $matcher)
