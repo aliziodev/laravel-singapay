@@ -87,7 +87,10 @@ class DirectDebit extends Endpoint
      *
      * Send `otp` plus exactly one flow: `transaction_id` (payment) or
      * `binding_id` + `unbind_context` (unbinding). Sending both — or
-     * neither — is an error.
+     * neither — is an error, and the gateway says so explicitly.
+     *
+     * `unbind_context` is an **array**, not a flag: a boolean is rejected
+     * with `The unbind context field must be an array.`
      *
      * @param  array<string, mixed>  $data
      */

@@ -88,7 +88,9 @@ class Accounts extends Endpoint
      * Delete a sub-account. Fails with HTTP 400 while the account still
      * holds a balance.
      *
-     * `DELETE /api/v1.0/accounts/{id}`
+     * `DELETE /api/v1.0/accounts/{id}` — absent from `merchant-api.json` but
+     * verified working in sandbox (2026-08-21), so do not "clean it up" on
+     * the strength of the spec alone.
      *
      * @param  string  $accountId  Account ULID.
      */

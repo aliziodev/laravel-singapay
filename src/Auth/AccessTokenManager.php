@@ -99,7 +99,7 @@ final class AccessTokenManager
         $baseUrl = $this->config->baseUrl($host);
 
         try {
-            $response = $this->pendingRequest($baseUrl, $useSigned)
+            $response = $this->pendingRequest($baseUrl, $useSigned, $host)
                 ->post($path, ['grant_type' => 'client_credentials']);
         } catch (HttpConnectionException $exception) {
             throw ConnectionException::to($baseUrl.$path, $exception);
@@ -131,33 +131,30 @@ final class AccessTokenManager
         return [(string) $result->data('access_token'), $ttl];
     }
 
-    private function pendingRequest(string $baseUrl, bool $useSigned): PendingRequest
+    private function pendingRequest(string $baseUrl, bool $useSigned, Host $host): PendingRequest
     {
+        $clientId = $this->config->clientIdFor($host);
+        $clientSecret = $this->config->clientSecretFor($host);
+
         $request = $this->http
             ->baseUrl($baseUrl)
             ->timeout($this->config->timeout)
             ->acceptJson()
-            ->withHeaders(['X-PARTNER-ID' => $this->config->requirePartnerId()]);
+            ->withHeaders(['X-PARTNER-ID' => $this->config->partnerIdFor($host)]);
 
         if ($useSigned) {
             return $request->withHeaders([
-                'X-CLIENT-ID' => $this->config->requireClientId(),
-                'X-Signature' => $this->signer->sign(
-                    $this->config->requireClientId(),
-                    $this->config->requireClientSecret(),
-                ),
+                'X-CLIENT-ID' => $clientId,
+                'X-Signature' => $this->signer->sign($clientId, $clientSecret),
             ]);
         }
 
-        return $request->withBasicAuth(
-            $this->config->requireClientId(),
-            $this->config->requireClientSecret(),
-        );
+        return $request->withBasicAuth($clientId, $clientSecret);
     }
 
     private function cacheKey(Host $host): string
     {
-        $clientHash = hash('sha256', $this->config->requireClientId());
+        $clientHash = hash('sha256', $this->config->clientIdFor($host));
 
         return "singapay:token:{$this->config->environment->value}:{$host->value}:{$clientHash}";
     }

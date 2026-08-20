@@ -152,7 +152,7 @@ final class Client implements SingaPayClientInterface
             ->withToken($token);
 
         if ($request->host !== Host::Identity) {
-            $pending = $pending->withHeaders(['X-PARTNER-ID' => $this->config->requirePartnerId()]);
+            $pending = $pending->withHeaders(['X-PARTNER-ID' => $this->config->partnerIdFor($request->host)]);
         }
 
         // Only idempotent reads are ever retried automatically.

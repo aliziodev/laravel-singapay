@@ -217,11 +217,13 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     that has its own Specific credential. Added to `ResponseCode` as
     `AccountCredentialRequired`. See also discrepancy 10.
 
-18. **The Biller host needs its own partner id.** Its token exchange rejects
-    the payment host's `SINGAPAY_PARTNER_ID` with
-    `403 Invalid X-PARTNER-ID`, and the SDK currently sends one partner id to
-    both hosts. Confirm the separate biller credentials with SingaPay before
-    using PPOB.
+18. **The Biller host needs its own credentials.** Its token exchange rejects
+    the payment host's `SINGAPAY_PARTNER_ID` with `403 Invalid X-PARTNER-ID`,
+    and `openapi-biller.json` requires `X-PARTNER-ID` on every biller call.
+    The SDK now takes `SINGAPAY_BILLER_CLIENT_ID`,
+    `SINGAPAY_BILLER_CLIENT_SECRET` and `SINGAPAY_BILLER_PARTNER_ID`, each
+    falling back to the payment values. The biller token path
+    (`POST /api/v1.0/access-token/b2b`, HTTP Basic) already matched the spec.
 6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5 — the docs are
    right. The SDK does not restrict the value. Probed against sandbox on
    2026-08-21: all twelve `VA_*` codes returned by
@@ -304,6 +306,25 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     milliseconds, and the update accepts partial fields where v1 requires
     `status` and silently ignores everything else. `list()`, `delete()` and
     `paymentMethods()` stay on v1 — v2 has no equivalent.
+
+31. **The six previously-untouched endpoints, now exercised.**
+    `accounts()->create()` and `accounts()->delete()` both return 200 — and
+    `DELETE /api/v1.0/accounts/{id}` works despite being absent from
+    `merchant-api.json`. `accountTransfer()->transfer()` succeeds and actually
+    moves balance between sub-accounts (`merchant_ref_no` — one `f` — is
+    echoed back). `cardlessWithdrawal()->cancel()` answers SP009 for an
+    unknown reference. `directDebit()->verifyOtp()` requires either
+    `transaction_id` or `binding_id` + `unbind_context`, and `unbind_context`
+    must be an **array** — a boolean is rejected. `triggerPaymentCredit()`
+    validates that `amount` equals the amount encoded in `qr_data`
+    (`amount inside 'qr_data' and 'amount' request param does not match`).
+
+32. **KYC contract verified against `swagger.json` without live credentials.**
+    All three paths, both verify payloads
+    (`request_id, account_number, name, bank_code` /
+    `request_id, phone_number, name, ewallet_code`) and the auth scheme
+    (hex HMAC-SHA256 of `{client_id}:{timestamp}` with an RFC 3339 timestamp)
+    match the SDK exactly.
 
 30. **Spec-vs-SDK sweep** (`merchant-api.json`, 71 operations). Besides the v2
     payment link group, the spec also carries v1 alternatives the SDK does not

@@ -33,6 +33,9 @@ final readonly class SingaPayConfig
         public array $baseUrls,
         public ?string $identityClientId,
         #[SensitiveParameter] public ?string $identityClientSecret,
+        public ?string $billerClientId,
+        #[SensitiveParameter] public ?string $billerClientSecret,
+        public ?string $billerPartnerId,
         public int $timeout,
         public int $retryTimes,
         public int $retrySleep,
@@ -75,6 +78,9 @@ final readonly class SingaPayConfig
             baseUrls: $config['base_urls'] ?? [],
             identityClientId: self::stringOrNull($config['identity']['client_id'] ?? null),
             identityClientSecret: self::stringOrNull($config['identity']['client_secret'] ?? null),
+            billerClientId: self::stringOrNull($config['biller']['client_id'] ?? null),
+            billerClientSecret: self::stringOrNull($config['biller']['client_secret'] ?? null),
+            billerPartnerId: self::stringOrNull($config['biller']['partner_id'] ?? null),
             timeout: (int) ($config['timeout'] ?? 30),
             retryTimes: (int) ($config['retry']['times'] ?? 2),
             retrySleep: (int) ($config['retry']['sleep'] ?? 200),
@@ -150,6 +156,51 @@ final readonly class SingaPayConfig
     public function requirePartnerId(): string
     {
         return $this->partnerId ?? throw ConfigurationException::missing('partner_id');
+    }
+
+    /**
+     * The client id for a host. The biller is a separate product and may hold
+     * its own credential set; when it is not configured the payment
+     * credentials are used, which is right for merchants whose biller access
+     * rides on the same keys.
+     *
+     * @throws ConfigurationException When neither the host-specific nor the payment value is set.
+     */
+    public function clientIdFor(Host $host): string
+    {
+        if ($host === Host::Biller && $this->billerClientId !== null) {
+            return $this->billerClientId;
+        }
+
+        return $this->requireClientId();
+    }
+
+    /**
+     * The client secret for a host. See {@see clientIdFor()}.
+     *
+     * @throws ConfigurationException When neither the host-specific nor the payment value is set.
+     */
+    public function clientSecretFor(Host $host): string
+    {
+        if ($host === Host::Biller && $this->billerClientSecret !== null) {
+            return $this->billerClientSecret;
+        }
+
+        return $this->requireClientSecret();
+    }
+
+    /**
+     * The partner id for a host. See {@see clientIdFor()}.
+     *
+     * @throws ConfigurationException When neither the host-specific nor the payment value is set.
+     */
+    public function partnerIdFor(Host $host): string
+    {
+        if ($host === Host::Biller && $this->billerPartnerId !== null) {
+            return $this->billerPartnerId;
+        }
+
+        return $this->requirePartnerId();
     }
 
     /**

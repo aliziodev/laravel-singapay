@@ -35,6 +35,9 @@ class QrisMoneyOut extends Endpoint
      *
      * @param  array<string, mixed>  $data  Required: `reference_number` (max 64,
      *                                      idempotency key), `amount` (1,000–10,000,000), `qr_data`, `customer_name`.
+     *                                      `amount` must equal the amount encoded inside `qr_data` — a mismatch is
+     *                                      rejected with `amount inside 'qr_data' and 'amount' request param does not
+     *                                      match`, so read it off the QR rather than passing your own figure.
      *                                      `account_id` defaults to the configured account. Optional:
      *                                      `customer_email`, `customer_phone`, `customer_location`.
      */

@@ -86,6 +86,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Biller (PPOB) credentials
+    |--------------------------------------------------------------------------
+    | The biller host is a separate product and may be issued its own
+    | credential set — a payment-host partner id is rejected there with
+    | "403 Invalid X-PARTNER-ID". Leave these null to reuse the payment
+    | credentials above, which is correct for merchants whose biller access
+    | rides on the same keys.
+    */
+    'biller' => [
+        'client_id' => env('SINGAPAY_BILLER_CLIENT_ID'),
+        'client_secret' => env('SINGAPAY_BILLER_CLIENT_SECRET'),
+        'partner_id' => env('SINGAPAY_BILLER_PARTNER_ID'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | HTTP behaviour
     |--------------------------------------------------------------------------
     | "retry" applies to GET requests only — write operations, and above all

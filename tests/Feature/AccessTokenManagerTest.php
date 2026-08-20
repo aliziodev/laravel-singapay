@@ -161,3 +161,42 @@ it('raises IpNotWhitelistedException when the token endpoint rejects the server 
 
     app(AccessTokenManager::class)->token();
 })->throws(IpNotWhitelistedException::class, 'egress IP');
+
+it('reuses the payment credentials for the biller host by default', function (): void {
+    Http::fake(tokenEndpointFixtures());
+
+    app(AccessTokenManager::class)->token(Host::Biller);
+
+    Http::assertSent(function (Request $request): bool {
+        return Str::contains($request->url(), 'biller')
+            && $request->header('X-PARTNER-ID') === [TestCase::PARTNER_ID]
+            && $request->header('Authorization') === ['Basic '.base64_encode(TestCase::CLIENT_ID.':'.TestCase::CLIENT_SECRET)];
+    });
+});
+
+it('uses the biller-specific credentials when they are configured', function (): void {
+    // The biller is a separate product and rejects a payment-host partner id
+    // with "403 Invalid X-PARTNER-ID", so it has to be configurable on its own.
+    config()->set('singapay.biller', [
+        'client_id' => 'biller-client',
+        'client_secret' => 'biller-secret',
+        'partner_id' => 'biller-partner',
+    ]);
+    reloadSingaPay();
+
+    Http::fake(tokenEndpointFixtures());
+
+    app(AccessTokenManager::class)->token(Host::Biller);
+
+    Http::assertSent(function (Request $request): bool {
+        return Str::contains($request->url(), 'biller')
+            && $request->header('X-PARTNER-ID') === ['biller-partner']
+            && $request->header('Authorization') === ['Basic '.base64_encode('biller-client:biller-secret')];
+    });
+
+    // The payment host must keep its own credentials.
+    app(AccessTokenManager::class)->token(Host::Payment);
+
+    Http::assertSent(fn (Request $request): bool => Str::contains($request->url(), 'payment')
+        && $request->header('X-PARTNER-ID') === [TestCase::PARTNER_ID]);
+});
