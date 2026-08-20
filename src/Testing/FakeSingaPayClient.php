@@ -6,9 +6,12 @@ namespace Aliziodev\Singapay\Testing;
 
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
 use Aliziodev\Singapay\Enums\ResponseCode;
+use Aliziodev\Singapay\Exceptions\MoneyOutDisabledException;
 use Aliziodev\Singapay\Http\ApiRequest;
 use Aliziodev\Singapay\Http\Response;
+use Aliziodev\Singapay\Support\SingaPayConfig;
 use Closure;
+use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Assert;
 
@@ -35,11 +38,25 @@ final class FakeSingaPayClient implements SingaPayClientInterface
 
     /**
      * @param  array<string, array<array-key, mixed>|Response|Closure>  $fixtures
+     * @param  SingaPayConfig|null  $config  Resolved from the container when omitted.
      */
-    public function __construct(private array $fixtures = []) {}
+    public function __construct(
+        private array $fixtures = [],
+        private ?SingaPayConfig $config = null,
+    ) {}
 
     public function send(ApiRequest $request): Response
     {
+        // The money-out guard is enforced here for the same reason it exists
+        // in the real client: a fake that waved signed requests through would
+        // let a test "prove" a disbursement works when production refuses it
+        // outright, which is precisely the mistake the guard exists to catch.
+        $config = $this->config ??= Container::getInstance()->make(SingaPayConfig::class);
+
+        if ($request->signed && ! $config->moneyOutEnabled) {
+            throw MoneyOutDisabledException::create("{$request->method} {$request->path}");
+        }
+
         $this->recorded[] = $request;
 
         return $this->resolveResponse($request);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aliziodev\Singapay\Facades;
 
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
+use Aliziodev\Singapay\Exceptions\MoneyOutDisabledException;
 use Aliziodev\Singapay\Http\Response;
 use Aliziodev\Singapay\SingaPay as SingaPayManager;
 use Aliziodev\Singapay\Support\SingaPayConfig;
@@ -60,6 +61,11 @@ class SingaPay extends Facade
      * {@see SingaPayClientInterface} so code injecting the contract
      * directly is faked too.
      *
+     * The money-out guard still applies: signed requests throw
+     * {@see MoneyOutDisabledException} unless
+     * `singapay.money_out.enabled` is on, so a test can never pass on a code
+     * path production would refuse.
+     *
      * @param  array<string, array<array-key, mixed>|Response|Closure>  $fixtures
      */
     public static function fake(array $fixtures = []): SingaPayFake
@@ -67,8 +73,9 @@ class SingaPay extends Facade
         $app = static::getFacadeApplication()
             ?? throw new RuntimeException('The SingaPay facade has no application; boot Laravel before calling fake().');
 
-        $fakeClient = new FakeSingaPayClient($fixtures);
-        $fake = new SingaPayFake($fakeClient, $app->make(SingaPayConfig::class));
+        $config = $app->make(SingaPayConfig::class);
+        $fakeClient = new FakeSingaPayClient($fixtures, $config);
+        $fake = new SingaPayFake($fakeClient, $config);
 
         $app->instance(SingaPayClientInterface::class, $fakeClient);
         $app->instance(SingaPayManager::class, $fake);

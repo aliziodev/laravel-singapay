@@ -261,4 +261,6 @@ $fake->assertNothingSent();
 $fake->assertSentCount(2);
 ```
 
+Guard money-out tetap berlaku di bawah `fake()`: request money-out melempar `MoneyOutDisabledException` kecuali `SINGAPAY_MONEY_OUT=true`. Ini disengaja — test tidak boleh lulus di jalur yang produksi tolak. Untuk menguji jalur money-out, nyalakan flag-nya di environment test Anda (mis. `<env name="SINGAPAY_MONEY_OUT" value="true"/>` di `phpunit.xml`).
+
 Untuk menguji listener webhook, lihat [webhooks.md](webhooks.md#menguji-listener-anda).

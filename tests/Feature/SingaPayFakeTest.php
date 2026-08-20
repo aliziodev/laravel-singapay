@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
 use Aliziodev\Singapay\Enums\ResponseCode;
+use Aliziodev\Singapay\Exceptions\MoneyOutDisabledException;
 use Aliziodev\Singapay\Facades\SingaPay;
 use Aliziodev\Singapay\Http\ApiRequest;
 use Aliziodev\Singapay\Http\Response;
@@ -81,11 +82,14 @@ it('asserts sent requests by pattern and callback', function (): void {
 });
 
 it('provides sugar assertions for common flows', function (): void {
+    // The fake enforces the same money-out guard as the real client, so the
+    // flag has to be on — and the config singleton rebuilt — before faking.
+    config()->set('singapay.money_out.enabled', true);
+    reloadSingaPay();
+
     $fake = SingaPay::fake();
 
     SingaPay::paymentLinks()->create(['reff_no' => 'INV-001']);
-
-    config()->set('singapay.money_out.enabled', true);
     SingaPay::disbursement()->transfer(['reference_number' => 'REF-1', 'amount' => 1000]);
 
     $fake->assertPaymentLinkCreated(fn (array $body): bool => $body['reff_no'] === 'INV-001');
@@ -102,4 +106,13 @@ it('fails assertions when nothing matched', function (): void {
     SingaPay::accounts()->list();
 
     expect(fn () => $fake->assertNothingSent())->toThrow(AssertionFailedError::class);
+});
+
+it('enforces the money-out guard so a faked disbursement cannot pass where production refuses', function (): void {
+    $fake = SingaPay::fake();
+
+    expect(fn () => SingaPay::disbursement()->transfer(['reference_number' => 'REF-1', 'amount' => 1000]))
+        ->toThrow(MoneyOutDisabledException::class);
+
+    $fake->assertNothingSent();
 });

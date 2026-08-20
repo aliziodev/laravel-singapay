@@ -262,4 +262,6 @@ $fake->assertNothingSent();
 $fake->assertSentCount(2);
 ```
 
+The money-out guard still applies under `fake()`: money-out requests throw `MoneyOutDisabledException` unless `SINGAPAY_MONEY_OUT=true`. That is deliberate — a test must never pass on a path production refuses. To exercise money-out, turn the flag on in your test environment (e.g. `<env name="SINGAPAY_MONEY_OUT" value="true"/>` in `phpunit.xml`).
+
 For testing webhook listeners, see [webhooks.md](webhooks.md#testing-your-listeners).
