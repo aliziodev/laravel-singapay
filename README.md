@@ -1,8 +1,13 @@
 # Laravel SingaPay
 
 [![Tests](https://github.com/aliziodev/laravel-singapay/actions/workflows/tests.yml/badge.svg)](https://github.com/aliziodev/laravel-singapay/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/aliziodev/laravel-singapay/branch/main/graph/badge.svg)](https://codecov.io/gh/aliziodev/laravel-singapay)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/aliziodev/laravel-singapay.svg)](https://packagist.org/packages/aliziodev/laravel-singapay)
-[![License](https://img.shields.io/packagist/l/aliziodev/laravel-singapay.svg)](LICENSE)
+[![Total Downloads](https://img.shields.io/packagist/dt/aliziodev/laravel-singapay.svg)](https://packagist.org/packages/aliziodev/laravel-singapay/stats)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/aliziodev/laravel-singapay/php.svg?label=php)](https://packagist.org/packages/aliziodev/laravel-singapay)
+[![Laravel Version](https://img.shields.io/packagist/dependency-v/aliziodev/laravel-singapay/illuminate%2Fsupport.svg?label=laravel)](https://packagist.org/packages/aliziodev/laravel-singapay)
+[![License](https://img.shields.io/github/license/aliziodev/laravel-singapay.svg)](LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/aliziodev/laravel-singapay)
 
 SDK Laravel **tidak resmi** untuk payment gateway [SingaPay](https://singapay.id) (PT Abadi Singapay Indonesia, PJP1 berizin Bank Indonesia). Paket ini tidak berafiliasi dengan PT Abadi Singapay Indonesia.
 
