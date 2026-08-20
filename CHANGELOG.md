@@ -1,3 +1,11 @@
+## 1.1.0 (2026-08-20)
+
+* docs: document the unified charge api ([b91a190](https://github.com/aliziodev/laravel-singapay/commit/b91a190))
+* ci: raise the coverage gate to 90% and audit dependencies ([0839517](https://github.com/aliziodev/laravel-singapay/commit/0839517))
+* test: cover event accessors, token edge paths, and lockless stores ([b4cd190](https://github.com/aliziodev/laravel-singapay/commit/b4cd190))
+* feat: add unified charge api across money-in methods ([905776a](https://github.com/aliziodev/laravel-singapay/commit/905776a))
+* fix: url-encode path parameters and pin the no-body-logging guarantee ([11eccd7](https://github.com/aliziodev/laravel-singapay/commit/11eccd7))
+
 ## 1.0.0 (2026-08-20)
 
 * ci: add test matrix and semantic-release workflows ([498617e](https://github.com/aliziodev/laravel-singapay/commit/498617e))
