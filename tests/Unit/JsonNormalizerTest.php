@@ -68,6 +68,10 @@ it('sorts stdClass properties recursively while keeping object semantics', funct
     expect($this->normalizer->normalize($payload))->toBe('{"a":{},"b":{"a":2,"z":1}}');
 });
 
+it('wraps encoding failures such as invalid UTF-8', function (): void {
+    $this->normalizer->normalize(['name' => "\xB1\x31"]);
+})->throws(JsonNormalizationException::class, 'Unable to encode');
+
 it('never mutates the input payload', function (): void {
     $payload = ['b' => 2, 'a' => 1];
     $copy = $payload;

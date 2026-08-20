@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Aliziodev\Singapay\Auth\AccessTokenManager;
+use Aliziodev\Singapay\Auth\AccessTokenSigner;
+use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
 use Aliziodev\Singapay\Exceptions\ConnectionException;
 use Aliziodev\Singapay\Exceptions\DuplicateReferenceException;
 use Aliziodev\Singapay\Exceptions\InsufficientBalanceException;
@@ -11,9 +14,11 @@ use Aliziodev\Singapay\Exceptions\MoneyOutDisabledException;
 use Aliziodev\Singapay\Exceptions\RequestException;
 use Aliziodev\Singapay\Exceptions\ValidationException;
 use Aliziodev\Singapay\Facades\SingaPay;
+use Aliziodev\Singapay\Support\SingaPayConfig;
 use Aliziodev\Singapay\Tests\TestCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException as HttpConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -168,6 +173,62 @@ it('surfaces v1 envelope failures with the gateway message', function (): void {
 
     expect(fn () => SingaPay::accounts()->find('01J000000000000000000000AA'))
         ->toThrow(RequestException::class, 'Account not found.');
+});
+
+it('refreshes the identity token and retries once on 401 from the KYC host', function (): void {
+    Http::fake([
+        'https://sandbox-apigw.singapay.id/api/v1/kyc/auth/get-auth-token' => Http::sequence()
+            ->push(['access_token' => 'stale-kyc', 'token_type' => 'Bearer', 'expires_in' => 3600])
+            ->push(['access_token' => 'fresh-kyc', 'token_type' => 'Bearer', 'expires_in' => 3600]),
+        '*kyc/bank/verify' => Http::sequence()
+            ->push(['code' => 'UNAUTHORIZED', 'message' => 'expired'], 401)
+            ->push(['code' => 'SUCCESS', 'data' => ['similarity' => 100], 'message' => 'OK']),
+    ]);
+
+    $response = SingaPay::identity()->verifyBankAccount([
+        'request_id' => 'r1', 'account_number' => '123456', 'bank_code' => '014', 'name' => 'Budi',
+    ]);
+
+    expect($response->successful())->toBeTrue();
+
+    Http::assertSentCount(4); // exchange, 401, fresh exchange, retried verify
+    Http::assertSent(fn (Request $request): bool => $request->header('Authorization') === ['Bearer fresh-kyc']);
+});
+
+it('caches the token manager double-check inside the lock', function (): void {
+    Http::fake();
+
+    // Simulates losing the pre-lock race: get() misses first (outside the
+    // lock), then hits inside the lock — no HTTP request may be made.
+    $repository = new class implements TokenRepositoryInterface
+    {
+        private int $reads = 0;
+
+        public function get(string $key): ?string
+        {
+            return ++$this->reads > 1 ? 'token-from-competitor' : null;
+        }
+
+        public function put(string $key, string $token, int $ttlSeconds): void {}
+
+        public function forget(string $key): void {}
+
+        public function withLock(string $key, Closure $callback): mixed
+        {
+            return $callback();
+        }
+    };
+
+    $manager = new AccessTokenManager(
+        $repository,
+        app(Factory::class),
+        app(AccessTokenSigner::class),
+        app(SingaPayConfig::class),
+    );
+
+    expect($manager->token())->toBe('token-from-competitor');
+
+    Http::assertNothingSent();
 });
 
 it('wraps transport failures in the SDK connection exception', function (): void {

@@ -13,6 +13,7 @@ use Aliziodev\Singapay\Support\JsonNormalizer;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Psr\Log\NullLogger;
 
 it('binds the SDK services as singletons', function (): void {
     expect(app(SingaPayClientInterface::class))->toBeInstanceOf(Client::class)
@@ -51,4 +52,36 @@ it('registers the artisan commands', function (): void {
     $commands = array_keys(Artisan::all());
 
     expect($commands)->toContain('singapay:install', 'singapay:token', 'singapay:ping', 'singapay:verify-signature');
+});
+
+it('injects a null logger into the client when logging is disabled', function (): void {
+    config()->set('singapay.logging.enabled', false);
+    reloadSingaPay();
+
+    $client = app(SingaPayClientInterface::class);
+
+    $logger = (new ReflectionProperty($client, 'logger'))->getValue($client);
+
+    expect($logger)->toBeInstanceOf(NullLogger::class);
+});
+
+it('exposes the client, config, and charge accessors on the manager', function (): void {
+    $manager = app(SingaPay::class);
+
+    expect($manager->client())->toBe(app(SingaPayClientInterface::class))
+        ->and($manager->config())->toBe(app(SingaPayConfig::class))
+        ->and($manager->charges())->toBe($manager->charges());
+});
+
+it('refuses to fake without a facade application', function (): void {
+    $app = Aliziodev\Singapay\Facades\SingaPay::getFacadeApplication();
+
+    try {
+        Aliziodev\Singapay\Facades\SingaPay::setFacadeApplication(null);
+
+        expect(fn () => Aliziodev\Singapay\Facades\SingaPay::fake())
+            ->toThrow(RuntimeException::class, 'no application');
+    } finally {
+        Aliziodev\Singapay\Facades\SingaPay::setFacadeApplication($app);
+    }
 });

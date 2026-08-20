@@ -108,6 +108,12 @@ it('exposes settlement and inquiry sub-event checks', function (): void {
 
     expect($changed->isStatusChange())->toBeTrue()
         ->and($changed->isPaymentSuccess())->toBeFalse();
+
+    $success = new Events\SubscriptionCycleProcessed(['event' => 'subscription.cycle.payment_success', 'data' => []]);
+
+    expect($success->isPaymentSuccess())->toBeTrue()
+        ->and($success->isPaymentFailed())->toBeFalse()
+        ->and($success->isStatusChange())->toBeFalse();
 });
 
 it('filters non-array entries out of expiration batches', function (): void {
