@@ -63,22 +63,20 @@ class Disbursement extends Endpoint
      * Validate a destination account number and retrieve the registered
      * holder name — confirm it with your user before transferring.
      *
-     * `GET /api/v1.0/disbursement/{account_id}/check-beneficiary`
+     * `POST /api/v1.0/disbursement/check-beneficiary` — note the path carries
+     * **no account id**, unlike every other disbursement route. The
+     * account-scoped `disbursement/{account_id}/check-beneficiary` is a
+     * different thing entirely: a GET transaction lookup that answers
+     * `404 Disbursement Transaction not found`.
      *
-     * ⚠️ Still only partially verified. The route is definitely a GET — POST
-     * answers `405 Supported methods: GET, HEAD` — but every sandbox GET so
-     * far replies `404 Disbursement Transaction not found`, with or without
-     * parameters, so the accepted query keys remain unconfirmed. Prefer the
-     * KYC service's bank verification
-     * ({@see IdentityVerification::verifyBankAccount()}), which is fully
-     * documented and verified.
-     *
-     * @param  array<string, mixed>  $filters  Sent as query parameters.
-     * @param  string|null  $accountId  Account ULID.
+     * @param  array<string, mixed>  $data  Required: `bank_swift_code`
+     *                                      (e.g. `BRINIDJA`) and `bank_account_number`. Returns `status`,
+     *                                      `bank_name`, `bank_number_code`, `bank_swift_code`,
+     *                                      `bank_account_number` and `bank_account_name`.
      */
-    public function checkBeneficiary(array $filters = [], ?string $accountId = null): Response
+    public function checkBeneficiary(array $data): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/disbursement/{$this->accountId($accountId)}/check-beneficiary", query: $filters));
+        return $this->send(new ApiRequest('POST', '/api/v1.0/disbursement/check-beneficiary', body: $data));
     }
 
     /**

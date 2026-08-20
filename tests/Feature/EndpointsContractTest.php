@@ -115,7 +115,8 @@ it('calls the documented endpoint', function (Closure $call, string $method, str
     'disbursement list' => [fn (SingaPay $sp) => $sp->disbursement()->list(), 'GET', PAYMENT_HOST.'/api/v1.0/disbursement/'.ACC],
     'disbursement find' => [fn (SingaPay $sp) => $sp->disbursement()->find('TX-9'), 'GET', PAYMENT_HOST.'/api/v1.0/disbursement/'.ACC.'/TX-9'],
     'disbursement check fee' => [fn (SingaPay $sp) => $sp->disbursement()->checkFee(['bank_swift_code' => 'BRINIDJA', 'amount' => 50000]), 'POST', PAYMENT_HOST.'/api/v1.0/disbursement/'.ACC.'/check-fee'],
-    'disbursement check beneficiary' => [fn (SingaPay $sp) => $sp->disbursement()->checkBeneficiary(['bank_code' => '014', 'bank_account_number' => '123']), 'GET', PAYMENT_HOST.'/api/v1.0/disbursement/'.ACC.'/check-beneficiary?bank_code=014&bank_account_number=123'],
+    // No account id in this path — it is not scoped like the other disbursement routes.
+    'disbursement check beneficiary' => [fn (SingaPay $sp) => $sp->disbursement()->checkBeneficiary(['bank_swift_code' => 'BRINIDJA', 'bank_account_number' => '123']), 'POST', PAYMENT_HOST.'/api/v1.0/disbursement/check-beneficiary'],
     'disbursement transfer' => [fn (SingaPay $sp) => $sp->disbursement()->transfer(['reference_number' => 'R', 'bank_code' => '014', 'bank_account_number' => '123', 'amount' => 1000]), 'POST', PAYMENT_HOST.'/api/v2.0/disbursement/transfer'],
     'disbursement inquiry' => [fn (SingaPay $sp) => $sp->disbursement()->inquireStatus('REF-1'), 'POST', PAYMENT_HOST.'/api/v2.0/disbursement/'.ACC.'/inquiry-status'],
 

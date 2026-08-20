@@ -84,7 +84,7 @@ and an **integer** on the identity host. The SDK casts defensively.
 | GET | `/api/v1.0/disbursement/{account_id}` | `disbursement()->list()` |
 | GET | `/api/v1.0/disbursement/{account_id}/{transaction_id}` | `disbursement()->find()` |
 | POST | `/api/v1.0/disbursement/{account_id}/check-fee` | `disbursement()->checkFee()` |
-| GET | `/api/v1.0/disbursement/{account_id}/check-beneficiary` | `disbursement()->checkBeneficiary()` |
+| POST | `/api/v1.0/disbursement/check-beneficiary` (no account id) | `disbursement()->checkBeneficiary()` |
 | POST | `/api/v2.0/disbursement/transfer` **[S]** | `disbursement()->transfer()` |
 | POST | `/api/v2.0/disbursement/{account_id}/inquiry-status` | `disbursement()->inquireStatus()` |
 | POST | `/api/v2.0/qris/issuer/mpm/inquiry-merchant` | `qrisMoneyOut()->inquireMerchant()` |
@@ -157,12 +157,19 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 
 1. **`llms.txt` omits the Card endpoints** — they exist only in
    `openapi.json` (`/v2.0/card/...`). Implemented, flagged PCI.
-2. **`llms.txt` omits `check-beneficiary`** — referenced by the disbursement
-   overview. Probed in sandbox 2026-08-21: it is a **GET**, not a POST (POST
-   answers `405 Supported methods: GET, HEAD`), but every GET replies
-   `404 Disbursement Transaction not found` whether parameters are supplied or
-   not, so the accepted query keys are still unknown. Use the KYC bank
-   verification instead; it is documented and works.
+2. **`check-beneficiary` is not account-scoped.** `llms.txt` omits it, and the
+   SDK originally called
+   `POST /api/v1.0/disbursement/{account_id}/check-beneficiary` — that path is
+   a *different* resource (a GET transaction lookup answering
+   `404 Disbursement Transaction not found`), which is why POST there returned
+   `405 Supported methods: GET, HEAD`. `merchant-api.json` documents the real
+   one with **no account id**:
+   `POST /api/v1.0/disbursement/check-beneficiary` with
+   `{bank_swift_code, bank_account_number}`. Verified working in sandbox
+   2026-08-21 — returns `status`, `bank_name`, `bank_number_code`,
+   `bank_swift_code`, `bank_account_number`, `bank_account_name`. A
+   `POST /api/v2.0/disbursement/check-beneficiary` taking `bank_code` is also
+   documented but answers SP014 in sandbox.
 3. **Account update**: docs say `PATCH /accounts/update/{id}` (name/status/
    invite_members); the OpenAPI spec says `PATCH /accounts/update-status/{id}`
    (status only). Settled in sandbox 2026-08-21 — **the docs are right**:
@@ -285,6 +292,23 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 26. **`virtualAccounts()->update()` needs `status` *and* the amount fields.**
     Sending only `status` fails with `422 {"amount": ["Amount is required"]}`;
     both together succeed.
+
+29. **A whole v2 Payment Link API exists and the SDK does not cover it.**
+    `merchant-api.json` documents `POST /api/v2.0/payment-link/{account_id}`
+    (create), `GET /api/v2.0/payment-link/{link_id}` (show, no account id) and
+    `PUT /api/v2.0/payment-link/update/{link_id}` (update). All three verified
+    working in sandbox 2026-08-21; created links record `source: "api v2"`.
+    It is materially better than v1: `payment_link_type: total|items` removes
+    the need to synthesise an `items` array just to satisfy `total_amount`,
+    and the update accepts partial fields where v1 requires `status` and
+    silently ignores everything else.
+
+30. **Spec-vs-SDK sweep** (`merchant-api.json`, 71 operations). Besides the v2
+    payment link group, the spec also carries v1 alternatives the SDK does not
+    expose — `POST /api/v1.0/disbursement/{account_id}/transfer` (takes
+    `bank_swift_code`) and `POST /api/v1.0/disbursement/{account_id}/inquiry-status`
+    — where the SDK uses the v2.0 signed equivalents. `check-fee` is confirmed
+    to take `bank_swift_code` and a numeric `amount`.
 
 27. **QRIS money-out `inquireMerchant` works and is correctly unguarded.**
     Called with a real `qr_data` string from a generated dynamic QRIS it
