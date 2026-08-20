@@ -1,0 +1,160 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Aliziodev\Singapay\Support;
+
+use Aliziodev\Singapay\Enums\Environment;
+use Aliziodev\Singapay\Enums\Host;
+use Aliziodev\Singapay\Exceptions\ConfigurationException;
+use SensitiveParameter;
+
+/**
+ * Immutable, typed snapshot of the `singapay` config.
+ *
+ * Built once by the service provider so the rest of the SDK never touches
+ * the string-keyed config repository. Credentials may be null at boot (for
+ * example in CI); the `require*` accessors throw a descriptive
+ * {@see ConfigurationException} the moment a credential is actually needed.
+ */
+final readonly class SingaPayConfig
+{
+    /**
+     * @param  array<string, array{sandbox: string, production: string}>  $baseUrls  Base URLs per host group.
+     */
+    public function __construct(
+        public Environment $environment,
+        public ?string $clientId,
+        #[SensitiveParameter] public ?string $clientSecret,
+        public ?string $partnerId,
+        public ?string $accountId,
+        public string $authVersion,
+        public array $baseUrls,
+        public ?string $identityClientId,
+        #[SensitiveParameter] public ?string $identityClientSecret,
+        public int $timeout,
+        public int $retryTimes,
+        public int $retrySleep,
+        public bool $moneyOutEnabled,
+        public bool $webhooksEnabled,
+        public string $webhookPath,
+        public bool $webhookVerifySignature,
+        public int $webhookTolerance,
+        public bool $webhookIdempotency,
+        public bool $loggingEnabled,
+        public ?string $loggingChannel,
+    ) {}
+
+    /**
+     * Build the config object from the `singapay` config array.
+     *
+     * @param  array<string, mixed>  $config
+     *
+     * @throws ConfigurationException When the environment or auth version is unrecognized.
+     */
+    public static function fromArray(array $config): self
+    {
+        $environment = Environment::tryFrom((string) ($config['environment'] ?? 'sandbox'))
+            ?? throw ConfigurationException::invalid('environment', 'must be "sandbox" or "production"');
+
+        $authVersion = (string) ($config['auth_version'] ?? '1.1');
+
+        if (! in_array($authVersion, ['1.0', '1.1'], true)) {
+            throw ConfigurationException::invalid('auth_version', 'must be "1.0" or "1.1"');
+        }
+
+        return new self(
+            environment: $environment,
+            clientId: self::stringOrNull($config['client_id'] ?? null),
+            clientSecret: self::stringOrNull($config['client_secret'] ?? null),
+            partnerId: self::stringOrNull($config['partner_id'] ?? null),
+            accountId: self::stringOrNull($config['account_id'] ?? null),
+            authVersion: $authVersion,
+            baseUrls: $config['base_urls'] ?? [],
+            identityClientId: self::stringOrNull($config['identity']['client_id'] ?? null),
+            identityClientSecret: self::stringOrNull($config['identity']['client_secret'] ?? null),
+            timeout: (int) ($config['timeout'] ?? 30),
+            retryTimes: (int) ($config['retry']['times'] ?? 2),
+            retrySleep: (int) ($config['retry']['sleep'] ?? 200),
+            moneyOutEnabled: (bool) ($config['money_out']['enabled'] ?? false),
+            webhooksEnabled: (bool) ($config['webhooks']['enabled'] ?? true),
+            webhookPath: (string) ($config['webhooks']['path'] ?? 'webhooks/singapay'),
+            webhookVerifySignature: (bool) ($config['webhooks']['verify_signature'] ?? true),
+            webhookTolerance: (int) ($config['webhooks']['tolerance'] ?? 300),
+            webhookIdempotency: (bool) ($config['webhooks']['idempotency'] ?? true),
+            loggingEnabled: (bool) ($config['logging']['enabled'] ?? true),
+            loggingChannel: self::stringOrNull($config['logging']['channel'] ?? null),
+        );
+    }
+
+    /**
+     * Resolve the base URL for a host in the current environment.
+     *
+     * @throws ConfigurationException When no URL is configured for the host.
+     */
+    public function baseUrl(Host $host): string
+    {
+        $url = $this->baseUrls[$host->value][$this->environment->value] ?? null;
+
+        if (! is_string($url) || $url === '') {
+            throw ConfigurationException::missing("base_urls.{$host->value}.{$this->environment->value}");
+        }
+
+        return rtrim($url, '/');
+    }
+
+    /**
+     * @throws ConfigurationException When SINGAPAY_CLIENT_ID is not set.
+     */
+    public function requireClientId(): string
+    {
+        return $this->clientId ?? throw ConfigurationException::missing('client_id');
+    }
+
+    /**
+     * @throws ConfigurationException When SINGAPAY_CLIENT_SECRET is not set.
+     */
+    public function requireClientSecret(): string
+    {
+        return $this->clientSecret ?? throw ConfigurationException::missing('client_secret');
+    }
+
+    /**
+     * @throws ConfigurationException When SINGAPAY_PARTNER_ID is not set.
+     */
+    public function requirePartnerId(): string
+    {
+        return $this->partnerId ?? throw ConfigurationException::missing('partner_id');
+    }
+
+    /**
+     * The default account ULID used when an endpoint call omits the account.
+     *
+     * @throws ConfigurationException When SINGAPAY_ACCOUNT_ID is not set either.
+     */
+    public function requireAccountId(): string
+    {
+        return $this->accountId ?? throw ConfigurationException::missing('account_id');
+    }
+
+    /**
+     * @throws ConfigurationException When the identity-verification credentials are not set.
+     */
+    public function requireIdentityClientId(): string
+    {
+        return $this->identityClientId ?? throw ConfigurationException::missing('identity.client_id');
+    }
+
+    /**
+     * @throws ConfigurationException When the identity-verification credentials are not set.
+     */
+    public function requireIdentityClientSecret(): string
+    {
+        return $this->identityClientSecret ?? throw ConfigurationException::missing('identity.client_secret');
+    }
+
+    private static function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+}
