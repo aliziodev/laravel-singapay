@@ -286,6 +286,17 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     Sending only `status` fails with `422 {"amount": ["Amount is required"]}`;
     both together succeed.
 
+27. **QRIS money-out `inquireMerchant` works and is correctly unguarded.**
+    Called with a real `qr_data` string from a generated dynamic QRIS it
+    returns 200 with the fully parsed EMV payload, while the money-out guard
+    is off — it is an inquiry, not a transfer.
+
+28. **Card `cancel()` cannot be exercised in sandbox.** Transactions created
+    with the test PAN report `processing` and reach `success` before a
+    follow-up call lands, so every cancel answers
+    `SP012 Cannot cancel: transaction status is success`. The void path is
+    unverified.
+
 24. **Settlement, as observed in sandbox** (partially answers discrepancy 9):
     VA transactions settle with `settlement_method: AUTO BALANCE` and
     `settlement_flow_type: SEQUENTIAL`, marked "parallel auto-settle" with no

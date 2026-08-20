@@ -64,6 +64,20 @@ class VerifySignatureCommand extends Command
         $endpoint = $this->stringOption('endpoint', '/api/v2.0/disbursement/transfer');
         $token = $this->stringOption('token', 'ACCESS_TOKEN');
 
+        // The endpoint is signed byte-for-byte, so a mangled one produces a
+        // plausible-looking signature that can never match — the worst
+        // possible outcome for a command whose whole job is to explain a
+        // mismatch. Git Bash / MSYS2 on Windows rewrites a leading "/" into a
+        // Windows path, turning "/api/test" into "C:/Program Files/Git/api/test".
+        if (! str_starts_with($endpoint, '/')) {
+            $this->components->error("The --endpoint must start with \"/\", got \"{$endpoint}\".");
+            $this->components->bulletList([
+                'On Windows, Git Bash rewrites a leading "/" into a Windows path. Use PowerShell, or escape it as "//api/...".',
+            ]);
+
+            return self::FAILURE;
+        }
+
         try {
             $normalized = $normalizer->normalize($body);
         } catch (SingaPayException $exception) {

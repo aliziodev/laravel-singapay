@@ -157,3 +157,18 @@ it('diagnoses the IP whitelist failure when it happens during the token exchange
         ->expectsOutputToContain('egress IP')
         ->assertFailed();
 });
+
+it('refuses an endpoint that lost its leading slash to shell path mangling', function (): void {
+    $file = tempnam(sys_get_temp_dir(), 'singapay');
+    file_put_contents((string) $file, '{"a":1}');
+
+    // What Git Bash hands the command when the user types "/api/test".
+    $this->artisan('singapay:verify-signature', [
+        'file' => $file,
+        '--endpoint' => 'C:/Program Files/Git/api/test',
+    ])
+        ->expectsOutputToContain('must start with')
+        ->assertFailed();
+
+    @unlink((string) $file);
+});
