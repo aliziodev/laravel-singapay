@@ -24,6 +24,16 @@ class JakartaClock
 {
     /**
      * The canonical SingaPay timezone (WIB, UTC+7).
+     *
+     * Deliberately hard-coded, NOT configurable: this is a protocol
+     * constant of the gateway's signature scheme (the token signature
+     * date must be the Jakarta calendar day), on par with the HMAC
+     * algorithm itself. Making it configurable would invite intermittent
+     * signature rejections around midnight for any deployment that "fixed"
+     * it to its own application timezone. Tests freeze time through
+     * CarbonImmutable::setTestNow() instead, and callers in other
+     * timezones can always pass DateTimeInterface values — conversion
+     * goes through absolute timestamps, so it stays correct.
      */
     public const TIMEZONE = 'Asia/Jakarta';
 
