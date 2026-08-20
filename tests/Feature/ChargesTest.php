@@ -211,6 +211,49 @@ it('rejects charges with missing required fields per method', function (): void 
     Http::assertNothingSent();
 });
 
+it('maps an e-wallet expiry to ISO 8601', function (): void {
+    fakeGateway();
+
+    SingaPay::pay('ewallet', [
+        'amount' => 10_000,
+        'vendor' => 'DANA',
+        'expires_at' => CarbonImmutable::parse(CHARGE_EXPIRES, 'Asia/Jakarta'),
+    ]);
+
+    Http::assertSent(fn (Request $request): bool => ($request->data()['expired_at'] ?? null) === '2026-08-20T12:00:00+07:00');
+});
+
+it('accepts a 10-digit unix-second expiry string', function (): void {
+    fakeGateway();
+
+    // 1787202000 = 2026-08-20 12:00 WIB.
+    SingaPay::pay('qris', ['amount' => 10_000, 'expires_at' => '1787202000']);
+
+    Http::assertSent(fn (Request $request): bool => ($request->data()['expired_at'] ?? null) === '2026-08-20T12:00:00+07:00');
+});
+
+it('maps expiry mistakes to ChargeException instead of leaking parser errors', function (): void {
+    Http::fake();
+
+    expect(fn () => SingaPay::pay('qris', ['amount' => 1000, 'expires_at' => '178720200012']))
+        ->toThrow(ChargeException::class, '10-digit Unix seconds or 13-digit milliseconds')
+        ->and(fn () => SingaPay::pay('qris', ['amount' => 1000, 'expires_at' => 'not-a-real-date-!!']))
+        ->toThrow(ChargeException::class, 'could not parse');
+
+    Http::assertNothingSent();
+});
+
+it('rejects amounts of unsupported types', function (): void {
+    Http::fake();
+
+    expect(fn () => SingaPay::pay('qris', ['amount' => ['nested' => 1000]]))
+        ->toThrow(ChargeException::class, 'integer')
+        ->and(fn () => SingaPay::pay('qris', ['amount' => 1000, 'expires_at' => true]))
+        ->toThrow(ChargeException::class, 'expires_at');
+
+    Http::assertNothingSent();
+});
+
 it('rejects float amounts before anything is sent', function (): void {
     Http::fake();
 

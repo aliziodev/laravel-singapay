@@ -220,17 +220,29 @@ class Charges
             return CarbonImmutable::instance($value);
         }
 
-        if (is_string($value) && ctype_digit($value) && strlen($value) === 13) {
-            return CarbonImmutable::createFromTimestampMs((int) $value, JakartaClock::TIMEZONE);
+        if (is_string($value) && ctype_digit($value)) {
+            return match (strlen($value)) {
+                13 => CarbonImmutable::createFromTimestampMs((int) $value, JakartaClock::TIMEZONE),
+                10 => CarbonImmutable::createFromTimestamp((int) $value, JakartaClock::TIMEZONE),
+                default => throw ChargeException::invalidField(
+                    'expires_at',
+                    'digit-only strings must be 10-digit Unix seconds or 13-digit milliseconds'
+                ),
+            };
         }
 
         if (is_string($value) && $value !== '') {
-            return CarbonImmutable::parse($value, JakartaClock::TIMEZONE);
+            try {
+                return CarbonImmutable::parse($value, JakartaClock::TIMEZONE);
+            } catch (\Throwable) {
+                // Never leak a third-party parse exception for a caller mistake.
+                throw ChargeException::invalidField('expires_at', "could not parse [{$value}] as a date");
+            }
         }
 
         throw ChargeException::invalidField(
             'expires_at',
-            'pass a DateTimeInterface, a parseable date string, or a 13-digit millisecond string'
+            'pass a DateTimeInterface, a parseable date string, or a 10/13-digit Unix timestamp string'
         );
     }
 
