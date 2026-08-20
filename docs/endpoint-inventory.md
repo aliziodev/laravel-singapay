@@ -170,7 +170,12 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
    the direct-debit charge page mentions ISO-8601. The SDK sends Unix seconds
    everywhere (canonical guide + reference implementations).
 6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5. The SDK does
-   not restrict the value.
+   not restrict the value. Probed against sandbox on 2026-08-21 — exactly nine
+   are accepted: `BRI`, `BNI`, `BCA`, `MANDIRI`, `PERMATA`, `CIMB`, `DANAMON`,
+   `BSI`, `MAYBANK`. `BTN`, `BJB`, `SINARMAS`, `MEGA` and `BUKOPIN` are
+   rejected with HTTP 422 `bank_code: "The selected bank code is invalid."`
+   Sandbox availability is not a promise about production — confirm with
+   SingaPay before relying on the list.
 7. **Token endpoint version**: docs use v1.1, the OpenAPI spec still
    references v1.0. Configurable via `auth_version` (default 1.1).
 8. **Payment-link webhook has no `event` field** in its documented example,

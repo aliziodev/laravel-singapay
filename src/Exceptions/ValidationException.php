@@ -16,8 +16,6 @@ class ValidationException extends RequestException
      */
     public function errors(): array
     {
-        $errors = $this->response->data('errors', []);
-
-        return is_array($errors) ? $errors : [];
+        return $this->response->fieldErrors();
     }
 }

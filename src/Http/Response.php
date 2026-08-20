@@ -145,6 +145,33 @@ final readonly class Response implements Arrayable
     }
 
     /**
+     * Per-field validation errors, wherever this envelope generation puts
+     * them.
+     *
+     * The v2 envelope reports them under `data.errors` alongside SP018; the
+     * v1 envelope used by the money-in endpoints answers HTTP 422 with no SP
+     * code at all and hides them under `error.errors`:
+     *
+     * ```json
+     * {"status":422,"success":false,
+     *  "error":{"code":422,"message":"Validation error",
+     *           "errors":{"bank_code":["The selected bank code is invalid."]}}}
+     * ```
+     *
+     * @return array<string, mixed>
+     */
+    public function fieldErrors(): array
+    {
+        $errors = $this->data('errors');
+
+        if (! is_array($errors) || $errors === []) {
+            $errors = Arr::get($this->raw, 'error.errors');
+        }
+
+        return is_array($errors) ? $errors : [];
+    }
+
+    /**
      * Retrieve a value from the `data` section using dot notation.
      *
      * ```php

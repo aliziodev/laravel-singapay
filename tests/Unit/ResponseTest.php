@@ -132,3 +132,21 @@ it('does not mistake other failures for an IP rejection', function (string $body
     'expired credentials' => ['{"status":401,"success":false,"error":{"code":401,"message":"Your IP address is not registered"}}', 401],
     'successful call' => ['{"status":200,"success":true,"data":{}}', 200],
 ]);
+
+it('finds field errors in either envelope generation', function (): void {
+    $v1 = Response::fromHttp(httpResponse(422, [
+        'status' => 422,
+        'success' => false,
+        'error' => ['code' => 422, 'message' => 'Validation error', 'errors' => ['bank_code' => ['invalid']]],
+    ]));
+
+    $v2 = Response::fromHttp(httpResponse(400, [
+        'response_code' => 'SP018',
+        'response_message' => 'Validation Error',
+        'data' => ['errors' => ['amount' => ['required']]],
+    ]));
+
+    expect($v1->fieldErrors())->toBe(['bank_code' => ['invalid']])
+        ->and($v2->fieldErrors())->toBe(['amount' => ['required']])
+        ->and(Response::fromHttp(httpResponse(200, ['status' => 200, 'success' => true, 'data' => []]))->fieldErrors())->toBe([]);
+});

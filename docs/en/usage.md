@@ -237,7 +237,7 @@ Every SDK exception derives from `Aliziodev\Singapay\Exceptions\SingaPayExceptio
 | ↳ `AuthenticationException` | SP013 after one token refresh |
 | ↳ `InvalidSignatureException` | SP016 — a caller-side bug; see [troubleshooting](troubleshooting.md) |
 | ↳ `IpNotWhitelistedException` | SP017, or a bare HTTP 403 "IP … not registered" from the token endpoint |
-| ↳ `ValidationException` | SP018 (has `->errors()`) |
+| ↳ `ValidationException` | SP018, or HTTP 422 from the money-in endpoints (has per-field `->errors()`) |
 | `MoneyOutDisabledException` | Money-out attempted while the guard is off |
 | `WebhookVerificationException` | An inbound webhook failed verification |
 

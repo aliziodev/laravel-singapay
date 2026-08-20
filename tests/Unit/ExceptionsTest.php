@@ -83,3 +83,28 @@ it('explains the serverless IP problem on a bare 403 with no SP code', function 
         ->and($exception->getMessage())->toContain('182.10.100.149')
         ->and($exception->getMessage())->toContain('egress IP');
 });
+
+it('surfaces field errors from the v1 envelope the money-in endpoints use', function (): void {
+    // Verbatim body captured from the SingaPay sandbox: HTTP 422, no SP code,
+    // and the per-field errors nested under error.errors rather than data.
+    $raw = [
+        'status' => 422,
+        'success' => false,
+        'error' => [
+            'code' => 422,
+            'message' => 'Validation error',
+            'errors' => ['bank_code' => ['The selected bank code is invalid.']],
+        ],
+    ];
+
+    $exception = RequestException::fromResponse(new Response(
+        status: 422,
+        code: null,
+        message: 'Validation error',
+        data: [],
+        raw: $raw,
+    ));
+
+    expect($exception)->toBeInstanceOf(ValidationException::class)
+        ->and($exception->errors())->toBe(['bank_code' => ['The selected bank code is invalid.']]);
+});

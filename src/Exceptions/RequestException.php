@@ -31,12 +31,16 @@ class RequestException extends SingaPayException
      */
     public static function fromResponse(Response $response): self
     {
-        // The IP check comes first: SingaPay rejects a non-whitelisted
-        // caller with a bare HTTP 403 on some hosts and SP017 on others,
-        // and only Response knows how to recognise both shapes.
-        $class = $response->rejectedIp()
-            ? IpNotWhitelistedException::class
-            : $response->code?->exceptionClass() ?? self::class;
+        // An SP code, when present, is the most specific signal. Without one
+        // — the v1 envelope carries none — fall back to the HTTP status and
+        // payload shape, which is how the money-in endpoints report both IP
+        // rejections and field validation failures.
+        $class = match (true) {
+            $response->rejectedIp() => IpNotWhitelistedException::class,
+            $response->code !== null => $response->code->exceptionClass(),
+            $response->status === 422 || $response->fieldErrors() !== [] => ValidationException::class,
+            default => self::class,
+        };
 
         /** @var self $exception */
         $exception = new $class($response, $class::buildMessage($response));
