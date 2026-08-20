@@ -34,6 +34,46 @@ Amount::from('150000.50');     // ❌ InvalidAmountException
 
 `Amount` serializes to a bare integer inside JSON bodies.
 
+## The unified charge API
+
+`SingaPay::pay($method, $data)` (alias `SingaPay::charges()->create(...)`) creates a money-in charge on any method from **one input shape** — the builder absorbs the per-method quirks: millisecond vs ISO 8601 expirations, `reff_no` vs `merchant_reff_no`, payment-link `items` synthesis, and the `EWALLET_` vendor prefix.
+
+```php
+use Aliziodev\Singapay\Facades\SingaPay;
+
+$charge = SingaPay::pay('va', [
+    'amount' => 150_000,                 // required — int/Amount/whole string (floats rejected)
+    'reference' => 'INV-2026-0001',      // merchant reference (required for payment_link)
+    'expires_at' => now()->addDay(),     // DateTime, date string, or 13-digit ms string
+    'customer' => ['name' => 'Budi', 'email' => 'budi@x.id', 'phone' => '0812...'],
+    'bank_code' => 'BRI',                // required for va
+]);
+
+$charge->successful();     // the gateway accepted the request
+$charge->vaNumber();       // the payment artifact per method:
+$charge->qrString();       //   qris → EMV string
+$charge->checkoutUrl();    //   payment_link / ewallet → URL
+$charge->data('...');      // full response access
+```
+
+**Methods & aliases** (case-insensitive): `payment_link`/`pl`/`link`, `virtual_account`/`va`, `qris`/`qr`, `ewallet`/`e-wallet`/`wallet` — or the `PaymentMethod` enum.
+
+**Per-method fields:**
+
+| Field | payment_link | va | qris | ewallet |
+|---|---|---|---|---|
+| `amount` | ✅ required | ✅ required | ✅ required | ✅ required |
+| `reference` | ✅ required (`reff_no`) | optional | optional | optional |
+| `expires_at` | → 13-digit ms | → 13-digit ms (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
+| `bank_code` | — | ✅ required | — | — |
+| `vendor` | — | — | — | ✅ required (e.g. `DANA`) |
+| `customer` | — | `name` → VA name | — | `customer_*` |
+| `title`, `items`, `max_usage` | ✅ (items synthesized when absent) | `max_usage` | — | — |
+| `redirect_url` | ✅ | — | — | → `merchant_redirect_url` |
+| `options` | escape hatch: raw fields merged onto the payload last | ⬅ same | ⬅ same | ⬅ same |
+
+Unmappable input (unknown method, missing required field, float `amount`) throws `ChargeException` **before** any traffic leaves. A VA without `expires_at` is created `permanent`; with one it becomes `temporary` + `max_usage` (default 1).
+
 ## Money in
 
 ### Payment links

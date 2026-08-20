@@ -53,6 +53,27 @@ php artisan singapay:ping
 
 ## Mulai cepat
 
+### Charge terpadu — satu API untuk semua metode money-in
+
+```php
+use Aliziodev\Singapay\Facades\SingaPay;
+
+// Satu bentuk input untuk payment link, VA, QRIS, dan e-wallet —
+// konversi format waktu & pemetaan field per metode ditangani otomatis.
+$charge = SingaPay::pay('qris', [
+    'amount' => 150_000,
+    'reference' => 'INV-2026-0001',
+    'expires_at' => now()->addHour(),
+]);
+$charge->qrString();
+
+SingaPay::pay('va', ['amount' => 150_000, 'bank_code' => 'BRI'])->vaNumber();
+SingaPay::pay('ewallet', ['amount' => 150_000, 'vendor' => 'DANA'])->checkoutUrl();
+SingaPay::pay('payment_link', ['amount' => 150_000, 'reference' => 'INV-1'])->checkoutUrl();
+```
+
+Detail lengkap (alias metode, field per metode, escape hatch `options`) ada di [docs/usage.md](docs/usage.md#api-charge-terpadu).
+
 ### Membuat Payment Link
 
 ```php
@@ -124,6 +145,7 @@ $fake->assertPaymentLinkCreated(fn (array $body) => $body['reff_no'] === 'INV-00
 
 | Akses | Cakupan |
 |---|---|
+| `SingaPay::pay()` / `charges()` | API charge terpadu lintas metode money-in |
 | `SingaPay::paymentLinks()` | CRUD payment link + daftar metode pembayaran |
 | `SingaPay::paymentLinkHistories()` | Riwayat pembayaran per link |
 | `SingaPay::virtualAccounts()` / `vaTransactions()` | Provisioning VA + transaksinya |

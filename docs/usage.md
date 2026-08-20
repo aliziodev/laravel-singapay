@@ -34,6 +34,46 @@ Amount::from('150000.50');     // ❌ InvalidAmountException
 
 `Amount` otomatis ter-serialize menjadi integer di dalam body JSON.
 
+## API charge terpadu
+
+`SingaPay::pay($method, $data)` (alias `SingaPay::charges()->create(...)`) membuat tagihan money-in pada metode mana pun dengan **satu bentuk input** — builder-nya yang menyerap kerumitan per metode: `expired_at` milidetik vs ISO 8601, `reff_no` vs `merchant_reff_no`, sintesis `items` untuk payment link, sampai prefix `EWALLET_` untuk vendor.
+
+```php
+use Aliziodev\Singapay\Facades\SingaPay;
+
+$charge = SingaPay::pay('va', [
+    'amount' => 150_000,                 // wajib — integer/Amount/string bulat (float ditolak)
+    'reference' => 'INV-2026-0001',      // reff merchant (wajib untuk payment_link)
+    'expires_at' => now()->addDay(),     // DateTime, string tanggal, atau string 13 digit ms
+    'customer' => ['name' => 'Budi', 'email' => 'budi@x.id', 'phone' => '0812...'],
+    'bank_code' => 'BRI',                // wajib untuk va
+]);
+
+$charge->successful();     // request diterima gateway
+$charge->vaNumber();       // artefak pembayaran per metode:
+$charge->qrString();       //   qris → string EMV
+$charge->checkoutUrl();    //   payment_link / ewallet → URL
+$charge->data('...');      // akses penuh ke response
+```
+
+**Metode & alias** (case-insensitive): `payment_link`/`pl`/`link`, `virtual_account`/`va`, `qris`/`qr`, `ewallet`/`e-wallet`/`wallet` — atau enum `PaymentMethod`.
+
+**Field per metode:**
+
+| Field | payment_link | va | qris | ewallet |
+|---|---|---|---|---|
+| `amount` | ✅ wajib | ✅ wajib | ✅ wajib | ✅ wajib |
+| `reference` | ✅ wajib (`reff_no`) | opsional | opsional | opsional |
+| `expires_at` | → ms 13 digit | → ms 13 digit (+`kind: temporary`) | → ISO 8601 | → ISO 8601 |
+| `bank_code` | — | ✅ wajib | — | — |
+| `vendor` | — | — | — | ✅ wajib (mis. `DANA`) |
+| `customer` | — | `name` → nama VA | — | `customer_*` |
+| `title`, `items`, `max_usage` | ✅ (items disintesis bila kosong) | `max_usage` | — | — |
+| `redirect_url` | ✅ | — | — | → `merchant_redirect_url` |
+| `options` | escape hatch: field mentah yang di-merge terakhir ke payload | ⬅ sama | ⬅ sama | ⬅ sama |
+
+Input yang tidak bisa dipetakan (metode tak dikenal, field wajib hilang, `amount` float) melempar `ChargeException` **sebelum** ada traffic keluar. VA tanpa `expires_at` dibuat `permanent`; dengan `expires_at` menjadi `temporary` + `max_usage` (default 1).
+
 ## Money in
 
 ### Payment Link

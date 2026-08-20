@@ -53,6 +53,27 @@ php artisan singapay:ping
 
 ## Quick start
 
+### Unified charges — one API for every money-in method
+
+```php
+use Aliziodev\Singapay\Facades\SingaPay;
+
+// One input shape for payment links, VAs, QRIS, and e-wallets —
+// per-method time formats and field mapping are handled for you.
+$charge = SingaPay::pay('qris', [
+    'amount' => 150_000,
+    'reference' => 'INV-2026-0001',
+    'expires_at' => now()->addHour(),
+]);
+$charge->qrString();
+
+SingaPay::pay('va', ['amount' => 150_000, 'bank_code' => 'BRI'])->vaNumber();
+SingaPay::pay('ewallet', ['amount' => 150_000, 'vendor' => 'DANA'])->checkoutUrl();
+SingaPay::pay('payment_link', ['amount' => 150_000, 'reference' => 'INV-1'])->checkoutUrl();
+```
+
+Full details (method aliases, per-method fields, the `options` escape hatch) in [docs/en/usage.md](docs/en/usage.md#the-unified-charge-api).
+
 ### Create a payment link
 
 ```php
@@ -124,6 +145,7 @@ $fake->assertPaymentLinkCreated(fn (array $body) => $body['reff_no'] === 'INV-00
 
 | Accessor | Coverage |
 |---|---|
+| `SingaPay::pay()` / `charges()` | Unified charge API across money-in methods |
 | `SingaPay::paymentLinks()` | Payment link CRUD + payment methods |
 | `SingaPay::paymentLinkHistories()` | Per-link payment histories |
 | `SingaPay::virtualAccounts()` / `vaTransactions()` | VA provisioning + transactions |
