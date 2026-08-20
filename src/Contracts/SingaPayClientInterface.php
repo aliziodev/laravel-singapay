@@ -25,7 +25,7 @@ interface SingaPayClientInterface
      * money-out request signature, the money-out guard, envelope
      * normalization, and mapping gateway errors to typed exceptions.
      *
-     * @throws MoneyOutDisabledException When a signed request is attempted while money-out is disabled.
+     * @throws MoneyOutDisabledException When a money-out request is attempted while money-out is disabled.
      * @throws ConnectionException When SingaPay cannot be reached.
      * @throws RequestException When the gateway reports a failure.
      */

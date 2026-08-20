@@ -159,6 +159,76 @@ $order = SingaPay::ewallet()->createOrder([
 $order->data('checkout_url');
 ```
 
+## Pembayaran berulang, kartu, dan direct debit
+
+Ketiganya diverifikasi langsung terhadap sandbox pada 2026-08-21. Semuanya money-in — tidak satu pun butuh `SINGAPAY_MONEY_OUT=true`.
+
+### Langganan (recurring plan)
+
+```php
+$plan = SingaPay::subscriptions()->createPlan([
+    'name' => 'Paket Bulanan',
+    'customer_name' => 'Budi',
+    'customer_email' => 'budi@example.id',
+    'customer_phone' => '081234567890',
+    'amount' => Amount::rupiah(99_000),    // atau 'items', pilih salah satu
+    'subscription_id' => 'SUB-ORDER-4021', // kunci korelasi Anda
+    'schedule' => [
+        'interval' => 1,
+        'interval_unit' => 'month',
+        'total_interval' => 12,
+        'start_time' => now()->addDay()->toIso8601String(),
+    ],
+]);
+
+$plan->data('payment_link_url'); // pelanggan menautkan kartunya di sini
+$plan->data('status');           // "pending_card_linking" sampai kartu tertaut
+```
+
+**Pakai `subscription_id` sebagai kunci korelasi, bukan `merchant_reff_no`.** Gateway menerima `merchant_reff_no` tanpa keluhan lalu membuangnya — plan selalu kembali dengan `merchant_reff_no: null`. `subscription_id` dihormati apa adanya, dan dibuatkan otomatis (`SUB-…`) kalau Anda tidak mengirimnya. `payment_type` juga selalu `null` saat pembuatan; nilainya baru terisi setelah pelanggan menautkan instrumen pembayaran.
+
+Sisanya: `findPlan($id)`, `updatePlan($id, [...])` (ubah `amount`/`items` untuk upgrade/downgrade — respons memuat objek `upgrade` berisi proration), dan `cancelPlan($id, $reason)` yang mencatat `cancellation_reason` di `metadata.extra`.
+
+### Kartu
+
+```php
+$tx = SingaPay::card()->payment([
+    'amount' => Amount::rupiah(150_000),
+    'goods_name' => 'Invoice #0001',
+    'card_number' => '4111111111111111',
+    'card_expiry' => '3012',   // YYMM — Desember 2030
+    'card_cvv' => '123',
+    // ... field customer_* wajib, lihat PHPDoc Card::payment()
+]);
+
+$tx->data('transaction_id');
+$tx->data('provider_transaction_id');
+```
+
+⚠️ **`card_expiry` adalah YYMM, bukan MMYY.** Desember 2030 = `3012`. Urutan terbalik ditolak dengan `SP001 Card Expiri Date Check Please.` — dan SP001 di tempat lain berarti "hasil tidak diketahui, lakukan inquiry", padahal di sini murni kesalahan format.
+
+`inquireStatus($id)` dan `cancel($id)` menerima `transaction_id` maupun `provider_transaction_id` (keduanya sudah diuji). `cancel()` menolak transaksi yang sudah `success` dengan `SP012`.
+
+⚠️ Server yang menyentuh nomor kartu mentah masuk cakupan PCI-DSS. Pakai Payment Link kecuali Anda paham konsekuensinya.
+
+### Direct debit
+
+```php
+$binding = SingaPay::directDebit()->bindCard([
+    'customer_ref' => 'CUST-4021',
+    'phone_no' => '081234567890',   // digit saja, TANPA "+"
+]);
+
+$binding->data('redirect_url');  // webview penautan, kedaluwarsa ~10 menit
+$binding->data('status');        // PENDING_AUTH
+```
+
+⚠️ **`phone_no` tidak boleh diawali `+`.** `081234567890` dan `6281234567890` diterima; `+6281234567890` ditolak dengan `SP002 General Failure` yang sama sekali tidak menjelaskan apa pun.
+
+Pelanggan harus menyelesaikan penautan di `redirect_url` (webview AyoConnect) — tidak ada jalan otomatis. Poll `bindingStatus($id)` sampai `PENDING_AUTH` menjadi `ACTIVE`; `charge()` pada binding yang belum aktif ditolak `SP018`. `charge()` dan `unbindCard()` bisa menjawab HTTP 202 dengan `requires_otp`; selesaikan lewat `verifyOtp()`.
+
+Direct debit **tidak** terkena guard money-out meski request-nya ditandatangani: dia menagih pelanggan, bukan mengirim uang keluar.
+
 ## Money out
 
 > Semua contoh di bawah butuh `SINGAPAY_MONEY_OUT=true`. Tanpa itu, SDK melempar `MoneyOutDisabledException` sebelum ada traffic keluar.

@@ -92,7 +92,7 @@ class Disbursement extends Endpoint
      */
     public function transfer(array $data): Response
     {
-        return $this->send(new ApiRequest('POST', '/api/v2.0/disbursement/transfer', body: $this->withAccountId($data), signed: true));
+        return $this->send(new ApiRequest('POST', '/api/v2.0/disbursement/transfer', body: $this->withAccountId($data), signed: true, moneyOut: true));
     }
 
     /**

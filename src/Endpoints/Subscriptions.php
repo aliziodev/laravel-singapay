@@ -25,7 +25,10 @@ class Subscriptions extends Endpoint
      *                                      `customer_email`, `customer_phone`, `schedule` (interval, interval_unit,
      *                                      total_interval, start_time), and exactly one of `amount` or `items`.
      *                                      `account_id` defaults to the configured account. Optional:
-     *                                      `subscription_id`, `merchant_reff_no`, `currency`, `customer_id`,
+     *                                      `subscription_id` (echoed back, and generated for you when omitted —
+     *                                      use it as your correlation key), `merchant_reff_no` (accepted but silently
+     *                                      dropped: the plan always comes back with `merchant_reff_no: null`, so do
+     *                                      not rely on it), `currency`, `customer_id`,
      *                                      `payment_type` (credit_card|gopay), `return_url`, `retry_policy`,
      *                                      `charge_immediately`, `allow_manual_payment`, `allow_user_notification`,
      *                                      `metadata`.

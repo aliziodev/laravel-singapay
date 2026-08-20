@@ -98,7 +98,7 @@ it('gives up after a single token refresh', function (): void {
     Http::assertSentCount(4); // no infinite refresh loop
 });
 
-it('blocks signed requests while money-out is disabled, before any traffic', function (): void {
+it('blocks money-out requests while money-out is disabled, before any traffic', function (): void {
     Http::fake();
 
     expect(fn () => SingaPay::disbursement()->transfer([
@@ -239,4 +239,41 @@ it('wraps transport failures in the SDK connection exception', function (): void
 
     expect(fn () => SingaPay::paymentLinks()->create(['reff_no' => 'X'], 'ACC'))
         ->toThrow(ConnectionException::class, 'Unable to reach SingaPay');
+});
+
+it('guards every operation that moves funds out, and only those', function (): void {
+    Http::fake();
+
+    $moneyOut = [
+        'disbursement' => fn () => SingaPay::disbursement()->transfer(['reference_number' => 'R', 'amount' => 50000]),
+        'account transfer' => fn () => SingaPay::accountTransfer()->transfer(['amount' => 50000]),
+        'cardless withdrawal' => fn () => SingaPay::cardlessWithdrawal()->create(['amount' => 50000]),
+        'ewallet top-up' => fn () => SingaPay::ewalletMoneyOut()->triggerTopup(['amount' => 50000]),
+        'qris issuer credit' => fn () => SingaPay::qrisMoneyOut()->triggerPaymentCredit(['amount' => 50000]),
+    ];
+
+    foreach ($moneyOut as $label => $call) {
+        expect($call)->toThrow(MoneyOutDisabledException::class, 'money_out.enabled', "{$label} must be guarded");
+    }
+
+    Http::assertNothingSent();
+});
+
+it('leaves direct-debit charge available while money-out is disabled', function (): void {
+    // Direct debit collects money from the customer. It needs the request
+    // signature, but locking it behind the money-out guard would force a
+    // merchant to unlock real disbursement just to accept payments.
+    Http::fake([...tokenEndpointFixtures(), '*direct-debit/charge' => Http::response(v2Success())]);
+
+    expect(SingaPay::config()->moneyOutEnabled)->toBeFalse();
+
+    SingaPay::directDebit()->charge([
+        'binding_id' => '4a1f0c5e-0000-4000-8000-000000000000',
+        'merchant_reference' => 'DD-1',
+        'amount' => 50000,
+    ]);
+
+    Http::assertSent(fn (Request $request): bool => Str::endsWith($request->url(), '/api/v2.0/direct-debit/charge')
+        // Still signed, just not guarded.
+        && $request->hasHeader('X-Signature'));
 });

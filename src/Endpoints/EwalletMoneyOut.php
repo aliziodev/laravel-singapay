@@ -47,7 +47,7 @@ class EwalletMoneyOut extends Endpoint
      */
     public function triggerTopup(array $data): Response
     {
-        return $this->send(new ApiRequest('POST', '/api/v2.0/ewallet/trigger-topup', body: $this->withAccountId($data), signed: true));
+        return $this->send(new ApiRequest('POST', '/api/v2.0/ewallet/trigger-topup', body: $this->withAccountId($data), signed: true, moneyOut: true));
     }
 
     /**

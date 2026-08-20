@@ -59,7 +59,7 @@ final class Client implements SingaPayClientInterface
 
     public function send(ApiRequest $request): Response
     {
-        if ($request->signed && ! $this->config->moneyOutEnabled) {
+        if ($request->moneyOut && ! $this->config->moneyOutEnabled) {
             throw MoneyOutDisabledException::create("{$request->method} {$request->path}");
         }
 

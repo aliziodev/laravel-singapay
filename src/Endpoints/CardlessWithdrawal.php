@@ -28,7 +28,7 @@ class CardlessWithdrawal extends Endpoint
      */
     public function create(array $data): Response
     {
-        return $this->send(new ApiRequest('POST', '/api/v1.0/cardless-withdrawals/create', body: $this->withAccountId($data), signed: true));
+        return $this->send(new ApiRequest('POST', '/api/v1.0/cardless-withdrawals/create', body: $this->withAccountId($data), signed: true, moneyOut: true));
     }
 
     /**

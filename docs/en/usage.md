@@ -159,6 +159,76 @@ $order = SingaPay::ewallet()->createOrder([
 $order->data('checkout_url');
 ```
 
+## Recurring payments, cards, and direct debit
+
+All three were verified against sandbox on 2026-08-21. All are money-in — none of them needs `SINGAPAY_MONEY_OUT=true`.
+
+### Subscriptions (recurring plans)
+
+```php
+$plan = SingaPay::subscriptions()->createPlan([
+    'name' => 'Monthly Plan',
+    'customer_name' => 'Budi',
+    'customer_email' => 'budi@example.id',
+    'customer_phone' => '081234567890',
+    'amount' => Amount::rupiah(99_000),     // or 'items' — exactly one of the two
+    'subscription_id' => 'SUB-ORDER-4021',  // your correlation key
+    'schedule' => [
+        'interval' => 1,
+        'interval_unit' => 'month',
+        'total_interval' => 12,
+        'start_time' => now()->addDay()->toIso8601String(),
+    ],
+]);
+
+$plan->data('payment_link_url'); // where the customer links their card
+$plan->data('status');           // "pending_card_linking" until they do
+```
+
+**Correlate on `subscription_id`, not `merchant_reff_no`.** The gateway accepts `merchant_reff_no` without complaint and then discards it — plans always come back with `merchant_reff_no: null`. `subscription_id` is echoed back verbatim, and generated for you (`SUB-…`) when omitted. `payment_type` is likewise always `null` at creation; it is populated once the customer links an instrument.
+
+The rest: `findPlan($id)`, `updatePlan($id, [...])` (changing `amount`/`items` performs an upgrade/downgrade — the response then carries an `upgrade` object with proration), and `cancelPlan($id, $reason)`, which records `cancellation_reason` under `metadata.extra`.
+
+### Cards
+
+```php
+$tx = SingaPay::card()->payment([
+    'amount' => Amount::rupiah(150_000),
+    'goods_name' => 'Invoice #0001',
+    'card_number' => '4111111111111111',
+    'card_expiry' => '3012',   // YYMM — December 2030
+    'card_cvv' => '123',
+    // ... the required customer_* fields, see Card::payment() PHPDoc
+]);
+
+$tx->data('transaction_id');
+$tx->data('provider_transaction_id');
+```
+
+⚠️ **`card_expiry` is YYMM, not MMYY.** December 2030 is `3012`. The reverse order is rejected with `SP001 Card Expiri Date Check Please.` — and SP001 elsewhere means "outcome unknown, go inquire", when here it is purely a format error.
+
+`inquireStatus($id)` and `cancel($id)` accept either `transaction_id` or `provider_transaction_id` (both verified). `cancel()` refuses an already-`success` transaction with `SP012`.
+
+⚠️ A server that touches raw card numbers is in PCI-DSS scope. Use Payment Link unless you understand the consequences.
+
+### Direct debit
+
+```php
+$binding = SingaPay::directDebit()->bindCard([
+    'customer_ref' => 'CUST-4021',
+    'phone_no' => '081234567890',   // digits only, NO leading "+"
+]);
+
+$binding->data('redirect_url');  // binding webview, expires in ~10 minutes
+$binding->data('status');        // PENDING_AUTH
+```
+
+⚠️ **`phone_no` must not carry a leading `+`.** `081234567890` and `6281234567890` are accepted; `+6281234567890` is rejected with a completely uninformative `SP002 General Failure`.
+
+The customer has to finish the binding at `redirect_url` (an AyoConnect webview) — there is no automated path. Poll `bindingStatus($id)` until `PENDING_AUTH` becomes `ACTIVE`; charging an inactive binding is refused with `SP018`. `charge()` and `unbindCard()` may answer HTTP 202 with `requires_otp`; finish those through `verifyOtp()`.
+
+Direct debit is **not** subject to the money-out guard even though its request is signed: it collects from the customer rather than sending funds out.
+
 ## Money out
 
 > Everything below requires `SINGAPAY_MONEY_OUT=true`. Otherwise the SDK throws `MoneyOutDisabledException` before any traffic leaves.

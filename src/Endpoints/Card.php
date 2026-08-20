@@ -34,7 +34,10 @@ class Card extends Endpoint
      * @param  array<string, mixed>  $data  Required: `amount`, `goods_name`,
      *                                      `customer_name`, `customer_email`, `customer_phone`, `customer_address`,
      *                                      `customer_city`, `customer_state`, `customer_postal_code`,
-     *                                      `customer_country` (2-letter ISO), `card_number`, `card_expiry` (MMYY),
+     *                                      `customer_country` (2-letter ISO), `card_number`, `card_expiry` (**YYMM** —
+     *                                      December 2030 is `3012`, not `1230`; the wrong order is rejected with the
+     *                                      misleading `SP001 Card Expiri Date Check Please.`, and SP001 normally means
+     *                                      "outcome unknown, go inquire" — here it is simply a format error),
      *                                      `card_cvv`, `card_holder_name`, `card_holder_email`. Optional:
      *                                      `reference_no`, `description`, `installment` (bool),
      *                                      `installment_month` ("3"|"6"|"12").

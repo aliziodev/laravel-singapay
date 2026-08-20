@@ -57,6 +57,7 @@ class AccountTransfer extends Endpoint
             "/api/v1.0/account-transfer/{$this->accountId($accountId)}/transfer",
             body: $data,
             signed: true,
+            moneyOut: true,
         ));
     }
 }

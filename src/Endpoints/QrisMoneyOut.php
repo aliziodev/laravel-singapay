@@ -40,7 +40,7 @@ class QrisMoneyOut extends Endpoint
      */
     public function triggerPaymentCredit(array $data): Response
     {
-        return $this->send(new ApiRequest('POST', '/api/v2.0/qris/issuer/mpm/payment-credit', body: $this->withAccountId($data), signed: true));
+        return $this->send(new ApiRequest('POST', '/api/v2.0/qris/issuer/mpm/payment-credit', body: $this->withAccountId($data), signed: true, moneyOut: true));
     }
 
     /**

@@ -168,7 +168,28 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
    page (unsigned); verify in sandbox before production.
 5. **`X-Timestamp` format**: the canonical signature guide says Unix seconds;
    the direct-debit charge page mentions ISO-8601. The SDK sends Unix seconds
-   everywhere (canonical guide + reference implementations).
+   everywhere (canonical guide + reference implementations) — confirmed correct
+   in sandbox on 2026-08-21: signed direct-debit charges and all four money-in
+   methods are accepted, so the signature (and its timestamp) verifies.
+
+12. **`card_expiry` is YYMM, not MMYY.** December 2030 is `3012`. `1230` is
+    rejected with `SP001 Card Expiri Date Check Please.` — and SP001 otherwise
+    means "outcome unknown, inquire before reacting", so the error actively
+    misdirects. Verified in sandbox both ways.
+
+13. **Direct-debit `phone_no` is not E.164.** A leading `+` is rejected with a
+    contentless `SP002 General Failure`; `081234567890` and `6281234567890`
+    both succeed. Verified in sandbox, five attempts.
+
+14. **Recurring plans silently drop `merchant_reff_no`.** The field is
+    accepted and the created plan always reports `merchant_reff_no: null`.
+    `subscription_id` *is* honoured (and auto-generated when omitted), so it is
+    the only usable correlation key. `payment_type` is likewise always null at
+    creation.
+
+15. **Direct-debit charge is signed but is not money-out.** It collects from
+    the customer. The SDK guards on a separate `moneyOut` flag so accepting
+    direct-debit payments never requires unlocking real disbursement.
 6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5 — the docs are
    right. The SDK does not restrict the value. Probed against sandbox on
    2026-08-21: all twelve `VA_*` codes returned by

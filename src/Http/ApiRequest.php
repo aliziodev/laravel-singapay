@@ -19,8 +19,13 @@ final readonly class ApiRequest
      * @param  string  $path  Absolute path including the /api prefix, without the host.
      * @param  array<string, mixed>  $query  Query parameters, appended to the path.
      * @param  array<string, mixed>|null  $body  JSON body, or null for body-less requests.
-     * @param  bool  $signed  Whether the money-out request signature (scheme C) is required.
+     * @param  bool  $signed  Whether the request signature (scheme C) is required.
      * @param  Host  $host  Which SingaPay service host receives the call.
+     * @param  bool  $moneyOut  Whether this call moves funds *out* of the merchant
+     *                          account, and is therefore subject to the money-out guard. Not the same
+     *                          thing as `$signed`: direct-debit charge is signed but collects money,
+     *                          so locking it behind the guard would force merchants to unlock real
+     *                          disbursement just to accept payments.
      */
     public function __construct(
         public string $method,
@@ -29,6 +34,7 @@ final readonly class ApiRequest
         public ?array $body = null,
         public bool $signed = false,
         public Host $host = Host::Payment,
+        public bool $moneyOut = false,
     ) {}
 
     /**

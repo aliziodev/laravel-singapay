@@ -48,12 +48,12 @@ final class FakeSingaPayClient implements SingaPayClientInterface
     public function send(ApiRequest $request): Response
     {
         // The money-out guard is enforced here for the same reason it exists
-        // in the real client: a fake that waved signed requests through would
-        // let a test "prove" a disbursement works when production refuses it
-        // outright, which is precisely the mistake the guard exists to catch.
+        // in the real client: a fake that waved these through would let a test
+        // "prove" a disbursement works when production refuses it outright,
+        // which is precisely the mistake the guard exists to catch.
         $config = $this->config ??= Container::getInstance()->make(SingaPayConfig::class);
 
-        if ($request->signed && ! $config->moneyOutEnabled) {
+        if ($request->moneyOut && ! $config->moneyOutEnabled) {
             throw MoneyOutDisabledException::create("{$request->method} {$request->path}");
         }
 

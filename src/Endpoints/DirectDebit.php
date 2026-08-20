@@ -24,8 +24,11 @@ class DirectDebit extends Endpoint
      * `POST /api/v2.0/direct-debit/binding`
      *
      * @param  array<string, mixed>  $data  Required: `customer_ref` (4–15 chars),
-     *                                      `phone_no` (E.164). Optional: `bank_code` (3 chars), `payment_otp_mode`
-     *                                      (WITH_OTP|WITHOUT_OTP), `success_redirect_url`, `failure_redirect_url`.
+     *                                      `phone_no` — **digits only, no leading `+`**: `081234567890` or
+     *                                      `6281234567890` both work, while true E.164 (`+6281234567890`) is rejected
+     *                                      with the contentless `SP002 General Failure`. Optional: `bank_code`
+     *                                      (3 chars), `payment_otp_mode` (WITH_OTP|WITHOUT_OTP),
+     *                                      `success_redirect_url`, `failure_redirect_url`.
      */
     public function bindCard(array $data): Response
     {
@@ -60,7 +63,10 @@ class DirectDebit extends Endpoint
     /**
      * Charge an active binding.
      *
-     * `POST /api/v2.0/direct-debit/charge` — signed (money-out guard applies).
+     * `POST /api/v2.0/direct-debit/charge` — signed, but *not* money-out: this
+     * collects funds from the customer, so it stays available with
+     * `singapay.money_out.enabled` off. Accepting direct-debit payments must
+     * never require unlocking real disbursement.
      *
      * May answer with `requires_otp: true`; complete via {@see verifyOtp()}.
      *
