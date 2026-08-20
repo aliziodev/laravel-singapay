@@ -131,3 +131,39 @@ it('rejects a body that is not valid JSON', function (): void {
 
     $this->verifier->verify('not-json', str_repeat('a', 128), $timestamp, 'Bearer x', WEBHOOK_ENDPOINT, WEBHOOK_SECRET);
 })->throws(WebhookVerificationException::class, 'not valid JSON');
+
+it('accepts a signature made with any of the candidate keys', function (): void {
+    $rawBody = '{"a":1}';
+    $timestamp = CarbonImmutable::now()->getTimestamp();
+    $hash = hash('sha256', $rawBody);
+
+    // Signed with the secondary key (the client secret in this scenario).
+    $signature = hash_hmac('sha512', 'POST:'.WEBHOOK_ENDPOINT.':'.WEBHOOK_TOKEN.":{$hash}:{$timestamp}", WEBHOOK_SECRET);
+
+    $this->verifier->verify(
+        rawBody: $rawBody,
+        signature: $signature,
+        timestamp: (string) $timestamp,
+        authorization: 'Bearer '.WEBHOOK_TOKEN,
+        endpoint: WEBHOOK_ENDPOINT,
+        clientSecret: ['hmac-validation-key', WEBHOOK_SECRET],
+    );
+
+    expect(true)->toBeTrue();
+});
+
+it('rejects a signature that matches none of the candidate keys', function (): void {
+    $rawBody = '{"a":1}';
+    $timestamp = CarbonImmutable::now()->getTimestamp();
+    $hash = hash('sha256', $rawBody);
+    $signature = hash_hmac('sha512', 'POST:'.WEBHOOK_ENDPOINT.':'.WEBHOOK_TOKEN.":{$hash}:{$timestamp}", 'some-other-secret');
+
+    $this->verifier->verify(
+        rawBody: $rawBody,
+        signature: $signature,
+        timestamp: (string) $timestamp,
+        authorization: 'Bearer '.WEBHOOK_TOKEN,
+        endpoint: WEBHOOK_ENDPOINT,
+        clientSecret: ['hmac-validation-key', WEBHOOK_SECRET],
+    );
+})->throws(WebhookVerificationException::class, 'does not match');

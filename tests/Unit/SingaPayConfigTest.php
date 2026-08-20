@@ -84,3 +84,26 @@ it('requires identity credentials separately from payment credentials', function
 
     $config->requireIdentityClientId();
 })->throws(ConfigurationException::class, 'identity.client_id');
+
+it('offers both the hmac validation key and the client secret for webhook verification', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig(['hmac_key' => 'hmac-validation-key']));
+
+    expect($config->hmacKey)->toBe('hmac-validation-key')
+        ->and($config->webhookSecrets())->toBe(['hmac-validation-key', 'sec']);
+});
+
+it('falls back to the client secret alone when no hmac key is set', function (): void {
+    expect(SingaPayConfig::fromArray(baseConfig())->webhookSecrets())->toBe(['sec']);
+});
+
+it('deduplicates identical webhook secrets', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig(['hmac_key' => 'sec']));
+
+    expect($config->webhookSecrets())->toBe(['sec']);
+});
+
+it('throws when no webhook secret is configured at all', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig(['client_secret' => null]));
+
+    $config->webhookSecrets();
+})->throws(ConfigurationException::class, 'client_secret');

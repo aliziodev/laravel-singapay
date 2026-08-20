@@ -29,6 +29,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | HMAC Validation Key
+    |--------------------------------------------------------------------------
+    | The "HMAC Validation Key" from the dashboard's Credential Details.
+    | When set, inbound webhook signatures are accepted from this key OR the
+    | client secret (each compared in constant time) — the official docs say
+    | webhooks are signed with the client secret, but the dashboard issues
+    | this dedicated key, so the SDK accepts both. Outbound signatures always
+    | use the client secret, as documented.
+    */
+    'hmac_key' => env('SINGAPAY_HMAC_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Access token scheme
     |--------------------------------------------------------------------------
     | "1.1" (default): HMAC-SHA512 signed token request.

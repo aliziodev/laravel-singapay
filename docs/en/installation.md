@@ -29,8 +29,20 @@ SINGAPAY_ENV=sandbox
 SINGAPAY_CLIENT_ID=your-client-id
 SINGAPAY_CLIENT_SECRET=your-client-secret
 SINGAPAY_PARTNER_ID=your-api-key
+SINGAPAY_HMAC_KEY=your-hmac-validation-key
 SINGAPAY_ACCOUNT_ID=01J...        # default account ULID
 ```
+
+Mapping from the **Credential Details** page in the SingaPay dashboard:
+
+| Dashboard field | Env variable | Used for |
+|---|---|---|
+| Client ID | `SINGAPAY_CLIENT_ID` | Client identity in every auth scheme |
+| Client Secret | `SINGAPAY_CLIENT_SECRET` | HMAC key for outbound signatures (token + money-out) |
+| API Key | `SINGAPAY_PARTNER_ID` | The `X-PARTNER-ID` header on every request |
+| HMAC Validation Key | `SINGAPAY_HMAC_KEY` | Verifying inbound webhook signatures (optional; without it verification uses the Client Secret) |
+
+> ⚠️ The most common mistake: swapping the **API Key** and the **Client Secret**. The API Key is an identity (header), not a signing key.
 
 ## Verify
 

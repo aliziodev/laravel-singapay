@@ -77,7 +77,10 @@ trait InteractsWithSingaPay
             $bearerToken,
             hash('sha256', is_string($normalized) ? $normalized : $rawBody),
             $timestamp,
-            $config->requireClientSecret(),
+            // Sign with the primary webhook key (the HMAC Validation Key
+            // when configured, otherwise the client secret) — exactly like
+            // a real delivery.
+            $config->webhookSecrets()[0],
         );
 
         return [

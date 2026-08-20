@@ -12,6 +12,7 @@ All configuration lives in `config/singapay.php` (publish via `php artisan singa
 | `client_id` | `SINGAPAY_CLIENT_ID` | — | Merchant client ID |
 | `client_secret` | `SINGAPAY_CLIENT_SECRET` | — | Client secret (the HMAC key for every signature) |
 | `partner_id` | `SINGAPAY_PARTNER_ID` | — | Merchant API key, sent as the `X-PARTNER-ID` header |
+| `hmac_key` | `SINGAPAY_HMAC_KEY` | — | The dashboard's "HMAC Validation Key". When set, webhook verification accepts signatures from this key OR the client secret (the docs name the client secret, the dashboard issues a dedicated key — the SDK accepts both). Outbound signatures always use the client secret |
 | `account_id` | `SINGAPAY_ACCOUNT_ID` | — | Default account ULID used when a call names no account |
 | `auth_version` | `SINGAPAY_AUTH_VERSION` | `1.1` | `1.1` (HMAC) or `1.0` (Basic, legacy) |
 

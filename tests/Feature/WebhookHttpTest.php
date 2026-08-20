@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Aliziodev\Singapay\Auth\RequestSigner;
 use Aliziodev\Singapay\Enums\WebhookType;
 use Aliziodev\Singapay\Events;
 use Aliziodev\Singapay\Events\WebhookReceived;
 use Aliziodev\Singapay\Testing\Concerns\InteractsWithSingaPay;
+use Aliziodev\Singapay\Tests\TestCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -155,6 +157,41 @@ it('skips verification when disabled, and idempotency when disabled', function (
 
     Event::assertDispatchedTimes(Events\VirtualAccountPaid::class, 2);
     $this->assertDatabaseCount('singapay_webhook_events', 0);
+});
+
+it('accepts deliveries signed with the dashboard hmac validation key', function (): void {
+    config()->set('singapay.hmac_key', 'dashboard-hmac-validation-key');
+    reloadSingaPay();
+
+    Event::fake([Events\VirtualAccountPaid::class]);
+
+    // The helper signs with the primary webhook key — the HMAC key here.
+    $this->postSingaPayWebhook(vaPayload())->assertOk();
+
+    Event::assertDispatched(Events\VirtualAccountPaid::class);
+});
+
+it('still accepts client-secret-signed deliveries when an hmac key is configured', function (): void {
+    config()->set('singapay.hmac_key', 'dashboard-hmac-validation-key');
+    reloadSingaPay();
+
+    $body = (string) json_encode(vaPayload());
+    $timestamp = (string) now()->getTimestamp();
+    $signature = app(RequestSigner::class)->signHashedBody(
+        'POST',
+        '/webhooks/singapay',
+        'test-webhook-token',
+        hash('sha256', $body),
+        (int) $timestamp,
+        TestCase::CLIENT_SECRET,
+    );
+
+    $this->call('POST', '/webhooks/singapay', server: $this->transformHeadersToServerVars([
+        'Content-Type' => 'application/json',
+        'Authorization' => 'Bearer test-webhook-token',
+        'X-Timestamp' => $timestamp,
+        'X-Signature' => $signature,
+    ]), content: $body)->assertOk();
 });
 
 it('rejects non-JSON bodies', function (): void {

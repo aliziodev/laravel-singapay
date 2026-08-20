@@ -12,6 +12,7 @@ Semua konfigurasi ada di `config/singapay.php` (publish via `php artisan singapa
 | `client_id` | `SINGAPAY_CLIENT_ID` | — | Client ID merchant |
 | `client_secret` | `SINGAPAY_CLIENT_SECRET` | — | Client secret (kunci HMAC semua tanda tangan) |
 | `partner_id` | `SINGAPAY_PARTNER_ID` | — | API key merchant, dikirim sebagai header `X-PARTNER-ID` |
+| `hmac_key` | `SINGAPAY_HMAC_KEY` | — | "HMAC Validation Key" dari dashboard. Bila di-set, verifikasi webhook menerima tanda tangan dari kunci ini ATAU client secret (dokumentasi resmi menyebut client secret, dashboard menerbitkan kunci khusus — SDK menerima keduanya). Tanda tangan keluar tetap memakai client secret |
 | `account_id` | `SINGAPAY_ACCOUNT_ID` | — | ULID akun default; dipakai ketika pemanggilan tidak menyebut akun |
 | `auth_version` | `SINGAPAY_AUTH_VERSION` | `1.1` | `1.1` (HMAC) atau `1.0` (Basic, legacy) |
 

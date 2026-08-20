@@ -29,8 +29,20 @@ SINGAPAY_ENV=sandbox
 SINGAPAY_CLIENT_ID=your-client-id
 SINGAPAY_CLIENT_SECRET=your-client-secret
 SINGAPAY_PARTNER_ID=your-api-key
+SINGAPAY_HMAC_KEY=your-hmac-validation-key
 SINGAPAY_ACCOUNT_ID=01J...        # ULID akun default
 ```
+
+Pemetaan dari halaman **Credential Details** di dashboard SingaPay:
+
+| Field di dashboard | Variabel env | Dipakai untuk |
+|---|---|---|
+| Client ID | `SINGAPAY_CLIENT_ID` | Identitas klien di semua skema auth |
+| Client Secret | `SINGAPAY_CLIENT_SECRET` | Kunci HMAC tanda tangan keluar (token + money-out) |
+| API Key | `SINGAPAY_PARTNER_ID` | Header `X-PARTNER-ID` di setiap request |
+| HMAC Validation Key | `SINGAPAY_HMAC_KEY` | Verifikasi tanda tangan webhook masuk (opsional; tanpa ini verifikasi memakai Client Secret) |
+
+> ⚠️ Kesalahan paling umum: menukar **API Key** dengan **Client Secret**. API Key adalah identitas (header), bukan kunci tanda tangan.
 
 ## Verifikasi
 

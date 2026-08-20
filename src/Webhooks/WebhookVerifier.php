@@ -48,7 +48,8 @@ final readonly class WebhookVerifier
      * @param  string|null  $timestamp  The X-Timestamp header value (Unix seconds).
      * @param  string|null  $authorization  The Authorization header value ("Bearer ...").
      * @param  string  $endpoint  The callback path including query string, e.g. "/webhooks/singapay".
-     * @param  string  $clientSecret  The merchant client secret (HMAC key).
+     * @param  string|list<string>  $clientSecret  Candidate HMAC key(s): the merchant client secret
+     *                                             and/or the dashboard's HMAC Validation Key. The signature must match one of them.
      * @param  int  $toleranceSeconds  Maximum allowed clock skew / replay window.
      *
      * @throws WebhookVerificationException When headers are missing, the timestamp is stale, or the signature does not match.
@@ -59,7 +60,7 @@ final readonly class WebhookVerifier
         ?string $timestamp,
         ?string $authorization,
         string $endpoint,
-        #[SensitiveParameter] string $clientSecret,
+        #[SensitiveParameter] string|array $clientSecret,
         int $toleranceSeconds = 300,
     ): void {
         if ($signature === null || $signature === ''
@@ -79,19 +80,22 @@ final readonly class WebhookVerifier
         }
 
         $token = preg_replace('/^Bearer\s+/i', '', $authorization) ?? $authorization;
+        $secrets = is_string($clientSecret) ? [$clientSecret] : $clientSecret;
 
         foreach ($this->candidateHashes($rawBody) as $hashedBody) {
-            $expected = $this->signer->signHashedBody(
-                'POST',
-                $endpoint,
-                $token,
-                $hashedBody,
-                (int) $timestamp,
-                $clientSecret,
-            );
+            foreach ($secrets as $secret) {
+                $expected = $this->signer->signHashedBody(
+                    'POST',
+                    $endpoint,
+                    $token,
+                    $hashedBody,
+                    (int) $timestamp,
+                    $secret,
+                );
 
-            if (hash_equals($expected, strtolower($signature))) {
-                return;
+                if (hash_equals($expected, strtolower($signature))) {
+                    return;
+                }
             }
         }
 

@@ -28,6 +28,7 @@ final readonly class SingaPayConfig
         #[SensitiveParameter] public ?string $clientSecret,
         public ?string $partnerId,
         public ?string $accountId,
+        #[SensitiveParameter] public ?string $hmacKey,
         public string $authVersion,
         public array $baseUrls,
         public ?string $identityClientId,
@@ -69,6 +70,7 @@ final readonly class SingaPayConfig
             clientSecret: self::stringOrNull($config['client_secret'] ?? null),
             partnerId: self::stringOrNull($config['partner_id'] ?? null),
             accountId: self::stringOrNull($config['account_id'] ?? null),
+            hmacKey: self::stringOrNull($config['hmac_key'] ?? null),
             authVersion: $authVersion,
             baseUrls: $config['base_urls'] ?? [],
             identityClientId: self::stringOrNull($config['identity']['client_id'] ?? null),
@@ -117,6 +119,29 @@ final readonly class SingaPayConfig
     public function requireClientSecret(): string
     {
         return $this->clientSecret ?? throw ConfigurationException::missing('client_secret');
+    }
+
+    /**
+     * The candidate keys for verifying inbound webhook signatures: the
+     * dashboard's HMAC Validation Key (when configured) and the client
+     * secret. The official docs name the client secret, but the dashboard
+     * issues a dedicated validation key — accepting either (each compared
+     * in constant time) keeps verification correct whichever one the
+     * gateway actually signs with.
+     *
+     * @return non-empty-list<string>
+     *
+     * @throws ConfigurationException When neither key is configured.
+     */
+    public function webhookSecrets(): array
+    {
+        $secrets = array_values(array_unique(array_filter([$this->hmacKey, $this->clientSecret])));
+
+        if ($secrets === []) {
+            throw ConfigurationException::missing('client_secret');
+        }
+
+        return $secrets;
     }
 
     /**

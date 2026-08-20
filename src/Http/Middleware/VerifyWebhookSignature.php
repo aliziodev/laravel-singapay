@@ -46,7 +46,7 @@ final class VerifyWebhookSignature
                 timestamp: $request->header('X-Timestamp'),
                 authorization: $request->header('Authorization'),
                 endpoint: $request->getRequestUri(),
-                clientSecret: $this->config->requireClientSecret(),
+                clientSecret: $this->config->webhookSecrets(),
                 toleranceSeconds: $this->config->webhookTolerance,
             );
         } catch (WebhookVerificationException $exception) {
