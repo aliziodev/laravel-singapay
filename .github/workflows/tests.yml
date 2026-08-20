@@ -39,6 +39,17 @@ jobs:
           key: composer-php${{ matrix.php }}-laravel${{ matrix.laravel }}-${{ hashFiles('composer.json') }}
           restore-keys: composer-php${{ matrix.php }}-laravel${{ matrix.laravel }}-
 
+      # Laravel 11 is past its security-fix window, so its releases carry
+      # unpatched advisories and newer Composer refuses to install them by
+      # default. We still test against it for compatibility — the advisories
+      # live in the consumer's framework, not in this package — so the audit
+      # block is lifted for these cells only.
+      - name: Allow post-EOL Laravel 11 in this cell
+        if: matrix.laravel == '11.*'
+        run: |
+          composer config policy.advisories.block false \
+            || php -r '$j=json_decode(file_get_contents("composer.json"),true);$j["config"]["policy"]["advisories"]["block"]=false;file_put_contents("composer.json",json_encode($j,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));'
+
       - name: Install dependencies
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" --no-update --no-interaction
