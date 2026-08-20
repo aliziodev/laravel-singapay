@@ -28,13 +28,16 @@ jobs:
           node-version: 'lts/*'
 
       - name: Install semantic-release
+        # The conventionalcommits preset is pinned to major 7: newer majors
+        # require a conventional-changelog-writer that semantic-release's
+        # release-notes-generator does not ship yet.
         run: |
           npm install --no-save \
             semantic-release \
             @semantic-release/changelog \
             @semantic-release/git \
             @semantic-release/github \
-            conventional-changelog-conventionalcommits
+            conventional-changelog-conventionalcommits@7
 
       - name: Run semantic-release
         env:
