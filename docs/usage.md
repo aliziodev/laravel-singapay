@@ -34,6 +34,26 @@ Amount::from('150000.50');     // ❌ InvalidAmountException
 
 `Amount` otomatis ter-serialize menjadi integer di dalam body JSON.
 
+## Nominal pada respons: jangan pernah bandingkan dengan `===`
+
+Nominal yang Anda **kirim** selalu integer (lihat bagian di atas). Nominal yang Anda **terima** tidak konsisten tipenya — gateway mencampur integer dan decimal-string di field yang sama, tergantung nilainya:
+
+```json
+{"debit":  {"value": 2500,      "currency": "IDR"},
+ "credit": {"value": "0.00",    "currency": "IDR"},
+ "balance_after": {"value": 1203500, "currency": "IDR"}}
+```
+
+Baris statement yang sama mengembalikan `2500` (integer) untuk nominal terisi dan `"0.00"` (string) untuk nol. Endpoint balance justru mengembalikan `"1203500.00"` (string) untuk nilai yang di statement muncul sebagai integer `1203500`.
+
+Jadi jangan pernah menulis `$row['credit']['value'] === 0` atau `=== "0.00"` — keduanya akan meleset separuh waktu. Normalkan dulu:
+
+```php
+$credit = Amount::from($response->data('credit.value'))->value; // selalu int rupiah
+```
+
+`Amount::from()` menerima integer maupun decimal-string dan menolak float, jadi aman dipakai sebagai gerbang tunggal untuk semua nominal yang masuk.
+
 ## API charge terpadu
 
 `SingaPay::pay($method, $data)` (alias `SingaPay::charges()->create(...)`) membuat tagihan money-in pada metode mana pun dengan **satu bentuk input** — builder-nya yang menyerap kerumitan per metode: `expired_at` milidetik vs ISO 8601, `reff_no` vs `merchant_reff_no`, sintesis `items` untuk payment link, sampai prefix `EWALLET_` untuk vendor.

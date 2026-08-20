@@ -34,6 +34,26 @@ Amount::from('150000.50');     // ❌ InvalidAmountException
 
 `Amount` serializes to a bare integer inside JSON bodies.
 
+## Amounts in responses: never compare with `===`
+
+Amounts you **send** are always integers (see above). Amounts you **receive** are not consistently typed — the gateway mixes integers and decimal strings in the same field depending on the value:
+
+```json
+{"debit":  {"value": 2500,      "currency": "IDR"},
+ "credit": {"value": "0.00",    "currency": "IDR"},
+ "balance_after": {"value": 1203500, "currency": "IDR"}}
+```
+
+One statement row returns `2500` (integer) for a populated amount and `"0.00"` (string) for zero. The balance endpoint then returns `"1203500.00"` (string) for the very value the statement reported as the integer `1203500`.
+
+So never write `$row['credit']['value'] === 0` or `=== "0.00"` — either check is wrong half the time. Normalise first:
+
+```php
+$credit = Amount::from($response->data('credit.value'))->value; // always int rupiah
+```
+
+`Amount::from()` accepts integers and decimal strings and rejects floats, which makes it a safe single gate for every incoming amount.
+
 ## The unified charge API
 
 `SingaPay::pay($method, $data)` (alias `SingaPay::charges()->create(...)`) creates a money-in charge on any method from **one input shape** — the builder absorbs the per-method quirks: millisecond vs ISO 8601 expirations, `reff_no` vs `merchant_reff_no`, payment-link `items` synthesis, and the `EWALLET_` vendor prefix.

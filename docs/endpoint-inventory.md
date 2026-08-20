@@ -257,13 +257,30 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     subscription cycle, settlement, direct debit); pointing all eight at one
     route is correct.
 
-22. **Sandbox Simulator payments did not emit money-in webhooks.** Seven VA
+22. **Sandbox Simulator payments do not emit money-in webhooks.** Seven VA
     payments, zero `va-transaction` deliveries, with the Money In Notif URL
     set and signature verification proven working by a `transaction-expiration`
-    delivery that arrived at the same URL minutes earlier. The account page's
-    Notification Configuration toggles (all off by default) were enabled and
-    changed nothing; they sit beside Notification Email and most likely govern
-    email. Unresolved — ask SingaPay.
+    delivery that arrived at the same URL minutes earlier. Settled by the
+    dashboard's own **Callback Activity History**, which held exactly one row
+    — that expiration delivery — and no attempt at all for the VA payments.
+    SingaPay never tried. The account page's Notification Configuration
+    toggles are unrelated: enabling all of them changed nothing, and they sit
+    beside Notification Email.
+
+23. **Amount `value` is inconsistently typed in responses.** The same
+    statement row returns `2500` (integer) for a populated amount and
+    `"0.00"` (string) for zero, while the balance endpoint returns
+    `"1203500.00"` for the value the statement reported as integer
+    `1203500`. Strict comparisons break; funnel every incoming amount
+    through `Amount::from()`.
+
+24. **Settlement, as observed in sandbox** (partially answers discrepancy 9):
+    VA transactions settle with `settlement_method: AUTO BALANCE` and
+    `settlement_flow_type: SEQUENTIAL`, marked "parallel auto-settle" with no
+    `settle_eligible_at`. The gateway fee books as a **separate debit
+    statement row** rather than being netted into the credit — a Rp88,000
+    payment produces `+88,000 credit` and `-2,500 debit` against the same
+    `transaction_id`. Production behaviour is still unconfirmed.
 9. **Settlement schedule and rolling reserve are undocumented** — ask SingaPay
    directly before going to production.
 10. **"Default" vs "Specific" credentials are undocumented.** The dashboard's

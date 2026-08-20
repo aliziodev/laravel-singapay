@@ -22,7 +22,9 @@ Satu route sudah cukup: controller mengenali tipe dari payload, bukan dari URL. 
 
 ### Sandbox: pembayaran dari Simulator belum tentu memicu webhook
 
-Diuji pada 2026-08-21 dengan Notif URL terisi benar dan tanda tangan terbukti valid: **tujuh** pembayaran VA lewat Simulator dashboard tidak menghasilkan satu pun delivery `va-transaction`. Pada saat yang sama, delivery `transaction-expiration` yang bertanda tangan **berhasil** masuk ke URL yang persis sama dan lolos verifikasi — jadi URL, tanda tangan, dan penerimanya jelas bekerja.
+Diuji pada 2026-08-21 dengan Notif URL terisi benar dan tanda tangan terbukti valid: **tujuh** pembayaran VA lewat Simulator dashboard tidak menghasilkan satu pun delivery `va-transaction`. Pada saat yang sama, delivery `transaction-expiration` yang bertanda tangan **berhasil** masuk ke URL yang persis sama dan lolos verifikasi.
+
+Dikonfirmasi dari sisi SingaPay sendiri: **Callback Activity History di dashboard hanya memuat satu baris** — delivery expiration itu — dan nol percobaan untuk pembayaran VA. Jadi SingaPay tidak gagal mengirim; ia memang tidak pernah mencoba.
 
 Halaman akun juga punya panel **Notification Configuration** (VA Transaction Paid, Payment Link Paid, Disbursement Success, dan seterusnya) yang semua toggle-nya default mati. Menyalakan semuanya **tidak** membuat webhook money-in terkirim. Panel itu berada satu halaman dengan **Notification Email**, jadi kemungkinan besar yang diaturnya adalah notifikasi email, bukan webhook — tapi ini belum dikonfirmasi SingaPay.
 

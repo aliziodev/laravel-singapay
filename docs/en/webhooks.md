@@ -22,7 +22,9 @@ One route is enough: the controller identifies the type from the payload, never 
 
 ### Sandbox: Simulator payments may not fire a webhook
 
-Tested 2026-08-21 with the Notif URLs correctly filled in and signature verification proven working: **seven** VA payments made through the dashboard Simulator produced no `va-transaction` delivery at all. In the same window a signed `transaction-expiration` delivery **did** arrive at the very same URL and verified cleanly — so the URL, the signature, and the receiver are all demonstrably fine.
+Tested 2026-08-21 with the Notif URLs correctly filled in and signature verification proven working: **seven** VA payments made through the dashboard Simulator produced no `va-transaction` delivery at all. In the same window a signed `transaction-expiration` delivery **did** arrive at the very same URL and verified cleanly.
+
+Confirmed from SingaPay's own side: the dashboard's **Callback Activity History held exactly one row** — that expiration delivery — and no attempt whatsoever for the VA payments. SingaPay was not failing to deliver; it never tried.
 
 The account page also carries a **Notification Configuration** panel (VA Transaction Paid, Payment Link Paid, Disbursement Success, and so on) whose toggles all default to off. Turning every one of them on did **not** produce a money-in webhook. That panel sits on the same page as **Notification Email**, so it most likely governs email notifications rather than webhooks — but SingaPay has not confirmed this.
 
