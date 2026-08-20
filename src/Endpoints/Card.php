@@ -56,7 +56,7 @@ class Card extends Endpoint
      */
     public function cancel(string $id, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('PATCH', "/api/v2.0/card/{$this->accountId($accountId)}/cancel/{$id}"));
+        return $this->send(new ApiRequest('PATCH', "/api/v2.0/card/{$this->accountId($accountId)}/cancel/{$this->segment($id)}"));
     }
 
     /**
@@ -70,6 +70,6 @@ class Card extends Endpoint
      */
     public function inquireStatus(string $id, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v2.0/card/{$this->accountId($accountId)}/inquiry-status/{$id}"));
+        return $this->send(new ApiRequest('GET', "/api/v2.0/card/{$this->accountId($accountId)}/inquiry-status/{$this->segment($id)}"));
     }
 }

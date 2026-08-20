@@ -50,7 +50,7 @@ class Accounts extends Endpoint
      */
     public function find(string $accountId): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/accounts/{$accountId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/accounts/{$this->segment($accountId)}"));
     }
 
     /**
@@ -64,7 +64,7 @@ class Accounts extends Endpoint
      */
     public function update(string $accountId, array $data): Response
     {
-        return $this->send(new ApiRequest('PATCH', "/api/v1.0/accounts/update/{$accountId}", body: $data));
+        return $this->send(new ApiRequest('PATCH', "/api/v1.0/accounts/update/{$this->segment($accountId)}", body: $data));
     }
 
     /**
@@ -77,7 +77,7 @@ class Accounts extends Endpoint
      */
     public function updateStatus(string $accountId, string $status): Response
     {
-        return $this->send(new ApiRequest('PATCH', "/api/v1.0/accounts/update-status/{$accountId}", body: ['status' => $status]));
+        return $this->send(new ApiRequest('PATCH', "/api/v1.0/accounts/update-status/{$this->segment($accountId)}", body: ['status' => $status]));
     }
 
     /**
@@ -90,6 +90,6 @@ class Accounts extends Endpoint
      */
     public function delete(string $accountId): Response
     {
-        return $this->send(new ApiRequest('DELETE', "/api/v1.0/accounts/{$accountId}"));
+        return $this->send(new ApiRequest('DELETE', "/api/v1.0/accounts/{$this->segment($accountId)}"));
     }
 }

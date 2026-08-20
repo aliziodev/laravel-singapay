@@ -40,7 +40,7 @@ class Disbursement extends Endpoint
      */
     public function find(string $transactionId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/disbursement/{$this->accountId($accountId)}/{$transactionId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/disbursement/{$this->accountId($accountId)}/{$this->segment($transactionId)}"));
     }
 
     /**

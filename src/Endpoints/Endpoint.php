@@ -33,11 +33,26 @@ abstract class Endpoint
 
     /**
      * Resolve an explicit account ULID or fall back to the configured
-     * default (`singapay.account_id`).
+     * default (`singapay.account_id`), URL-encoded for safe interpolation
+     * into a request path. Use {@see withAccountId()} for body values.
      */
     protected function accountId(?string $accountId): string
     {
-        return $accountId ?? $this->config->requireAccountId();
+        return $this->segment($accountId ?? $this->config->requireAccountId());
+    }
+
+    /**
+     * URL-encode a path segment.
+     *
+     * Every identifier interpolated into a path goes through this, so a
+     * value that originated from user input (an ID with "../" or "?",
+     * for example) can never break out of its path segment, reach a
+     * different endpoint, or smuggle query parameters into the signed
+     * ENDPOINT string.
+     */
+    protected function segment(string|int $value): string
+    {
+        return rawurlencode((string) $value);
     }
 
     /**

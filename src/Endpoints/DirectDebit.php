@@ -41,7 +41,7 @@ class DirectDebit extends Endpoint
      */
     public function bindingStatus(string $bindingId): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v2.0/direct-debit/binding/{$bindingId}"));
+        return $this->send(new ApiRequest('GET', "/api/v2.0/direct-debit/binding/{$this->segment($bindingId)}"));
     }
 
     /**
@@ -54,7 +54,7 @@ class DirectDebit extends Endpoint
      */
     public function unbindCard(string $bindingId): Response
     {
-        return $this->send(new ApiRequest('POST', "/api/v2.0/direct-debit/binding/{$bindingId}/unbind", body: []));
+        return $this->send(new ApiRequest('POST', "/api/v2.0/direct-debit/binding/{$this->segment($bindingId)}/unbind", body: []));
     }
 
     /**
@@ -100,6 +100,6 @@ class DirectDebit extends Endpoint
      */
     public function findTransaction(string $transactionId): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v2.0/direct-debit/transaction/{$transactionId}"));
+        return $this->send(new ApiRequest('GET', "/api/v2.0/direct-debit/transaction/{$this->segment($transactionId)}"));
     }
 }

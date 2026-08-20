@@ -55,7 +55,7 @@ class CardlessWithdrawal extends Endpoint
      */
     public function find(string $referenceNumber, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/cardless-withdrawals/transaction/{$this->accountId($accountId)}/{$referenceNumber}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/cardless-withdrawals/transaction/{$this->accountId($accountId)}/{$this->segment($referenceNumber)}"));
     }
 
     /**
@@ -71,7 +71,8 @@ class CardlessWithdrawal extends Endpoint
     public function cancel(string $referenceNumber, string $reason, ?string $accountId = null): Response
     {
         return $this->send(new ApiRequest('POST', '/api/v1.0/cardless-withdrawals/cancel', body: [
-            'account_id' => $this->accountId($accountId),
+            // Body value — resolved raw, unlike accountId() which URL-encodes for paths.
+            'account_id' => $accountId ?? $this->config->requireAccountId(),
             'reference_number' => $referenceNumber,
             'reason' => $reason,
         ]));

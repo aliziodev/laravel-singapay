@@ -44,7 +44,7 @@ class Subscriptions extends Endpoint
      */
     public function findPlan(string $planId): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v2.0/recurring/plans/{$planId}"));
+        return $this->send(new ApiRequest('GET', "/api/v2.0/recurring/plans/{$this->segment($planId)}"));
     }
 
     /**
@@ -61,7 +61,7 @@ class Subscriptions extends Endpoint
      */
     public function updatePlan(string $planId, array $data): Response
     {
-        return $this->send(new ApiRequest('PATCH', "/api/v2.0/recurring/plans/{$planId}", body: $data));
+        return $this->send(new ApiRequest('PATCH', "/api/v2.0/recurring/plans/{$this->segment($planId)}", body: $data));
     }
 
     /**
@@ -76,7 +76,7 @@ class Subscriptions extends Endpoint
     {
         return $this->send(new ApiRequest(
             'POST',
-            "/api/v2.0/recurring/plans/cancel/{$planId}",
+            "/api/v2.0/recurring/plans/cancel/{$this->segment($planId)}",
             body: $reason === null ? [] : ['reason' => $reason],
         ));
     }

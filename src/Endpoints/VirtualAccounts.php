@@ -57,7 +57,7 @@ class VirtualAccounts extends Endpoint
      */
     public function find(string $virtualAccountId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$virtualAccountId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$this->segment($virtualAccountId)}"));
     }
 
     /**
@@ -74,7 +74,7 @@ class VirtualAccounts extends Endpoint
      */
     public function update(string $virtualAccountId, array $data, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('PUT', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$virtualAccountId}", body: $data));
+        return $this->send(new ApiRequest('PUT', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$this->segment($virtualAccountId)}", body: $data));
     }
 
     /**
@@ -87,6 +87,6 @@ class VirtualAccounts extends Endpoint
      */
     public function delete(string $virtualAccountId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('DELETE', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$virtualAccountId}"));
+        return $this->send(new ApiRequest('DELETE', "/api/v1.0/virtual-accounts/{$this->accountId($accountId)}/{$this->segment($virtualAccountId)}"));
     }
 }

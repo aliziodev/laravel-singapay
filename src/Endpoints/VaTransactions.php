@@ -43,7 +43,7 @@ class VaTransactions extends Endpoint
      */
     public function find(string $transactionId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/va-transactions/{$this->accountId($accountId)}/{$transactionId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/va-transactions/{$this->accountId($accountId)}/{$this->segment($transactionId)}"));
     }
 
     /**
@@ -60,7 +60,7 @@ class VaTransactions extends Endpoint
     {
         return $this->send(new ApiRequest(
             'GET',
-            "/api/v1.0/va-transactions/{$this->accountId($accountId)}/detail-by-va-number/{$vaNumber}",
+            "/api/v1.0/va-transactions/{$this->accountId($accountId)}/detail-by-va-number/{$this->segment($vaNumber)}",
             query: $filters,
         ));
     }

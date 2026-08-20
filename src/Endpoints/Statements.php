@@ -38,6 +38,6 @@ class Statements extends Endpoint
      */
     public function find(string $statementId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/statements/{$this->accountId($accountId)}/{$statementId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/statements/{$this->accountId($accountId)}/{$this->segment($statementId)}"));
     }
 }

@@ -38,7 +38,7 @@ class AccountTransfer extends Endpoint
      */
     public function find(string $transactionId, ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('GET', "/api/v1.0/account-transfer/{$this->accountId($accountId)}/{$transactionId}"));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/account-transfer/{$this->accountId($accountId)}/{$this->segment($transactionId)}"));
     }
 
     /**
