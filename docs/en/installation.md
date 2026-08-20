@@ -4,8 +4,8 @@
 
 ## Requirements
 
-- PHP 8.2 or newer
-- Laravel 11, 12, or 13
+- PHP 8.3 or newer
+- Laravel 13
 - SingaPay merchant credentials (client ID, client secret, partner ID/API key, and an account ULID) from the SingaPay dashboard
 - A server with a **static public IP** whitelisted in the SingaPay dashboard
 

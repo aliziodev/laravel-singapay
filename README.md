@@ -164,10 +164,10 @@ Referensi teknis: [Inventaris Endpoint](docs/endpoint-inventory.md) (English).
 
 ## Kebutuhan
 
-- PHP 8.2+
-- Laravel 11, 12, atau 13
+- PHP 8.3+
+- Laravel 13
 
-> **Catatan Laravel 11:** masih didukung demi kompatibilitas, tetapi Laravel 11 sudah melewati masa dukungan keamanannya dan membawa advisory yang tidak akan dipatch — Composer versi baru bahkan memblokir instalasinya secara default. Untuk aplikasi pembayaran, sangat disarankan memakai Laravel 12+.
+> Paket ini sengaja hanya menargetkan versi Laravel terbaru. Untuk aplikasi pembayaran, framework yang masih menerima patch keamanan adalah prasyarat — Laravel 11 sudah melewati masa dukungan keamanannya dan Composer terbaru bahkan memblokir instalasinya secara default.
 
 ## Lisensi
 

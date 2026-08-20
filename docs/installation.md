@@ -4,8 +4,8 @@
 
 ## Kebutuhan
 
-- PHP 8.2 atau lebih baru
-- Laravel 11, 12, atau 13
+- PHP 8.3 atau lebih baru
+- Laravel 13
 - Kredensial merchant SingaPay (client ID, client secret, partner ID/API key, dan ULID akun) dari dashboard SingaPay
 - Server dengan **IP publik statis** yang sudah di-whitelist di dashboard SingaPay
 

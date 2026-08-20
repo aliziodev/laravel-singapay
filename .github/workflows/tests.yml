@@ -13,13 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
-        laravel: ['11.*', '12.*', '13.*']
-        exclude:
-          - php: '8.2'
-            laravel: '13.*'   # Laravel 13 requires PHP 8.3+
+        php: ['8.3', '8.4']
 
-    name: PHP ${{ matrix.php }} — Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }}
 
     steps:
       - uses: actions/checkout@v4
@@ -36,37 +32,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
-          key: composer-php${{ matrix.php }}-laravel${{ matrix.laravel }}-${{ hashFiles('composer.json') }}
-          restore-keys: composer-php${{ matrix.php }}-laravel${{ matrix.laravel }}-
-
-      # Laravel 11 is past its security-fix window, so its releases carry
-      # unpatched advisories and newer Composer refuses to install them by
-      # default. We still test against it for compatibility — the advisories
-      # live in the consumer's framework, not in this package — so the audit
-      # block is lifted for these cells only.
-      - name: Allow post-EOL Laravel 11 in this cell
-        if: matrix.laravel == '11.*'
-        run: |
-          composer config policy.advisories.block false \
-            || php -r '$j=json_decode(file_get_contents("composer.json"),true);$j["config"]["policy"]["advisories"]["block"]=false;file_put_contents("composer.json",json_encode($j,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));'
+          key: composer-php${{ matrix.php }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-php${{ matrix.php }}-
 
       - name: Install dependencies
-        run: |
-          composer require "laravel/framework:${{ matrix.laravel }}" --no-update --no-interaction
-          composer update --prefer-dist --no-interaction --no-progress
+        run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Check code style (Pint)
-        if: matrix.php == '8.4' && matrix.laravel == '13.*'
+        if: matrix.php == '8.4'
         run: vendor/bin/pint --test
 
       - name: Static analysis (Larastan level 8)
-        if: matrix.php == '8.4' && matrix.laravel == '13.*'
+        if: matrix.php == '8.4'
         run: vendor/bin/phpstan analyse --no-progress
 
       - name: Run tests with coverage gate
-        if: matrix.php == '8.4' && matrix.laravel == '13.*'
+        if: matrix.php == '8.4'
         run: vendor/bin/pest --compact --coverage --min=80
 
       - name: Run tests
-        if: matrix.php != '8.4' || matrix.laravel != '13.*'
+        if: matrix.php != '8.4'
         run: vendor/bin/pest --compact
