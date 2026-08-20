@@ -167,6 +167,8 @@ Referensi teknis: [Inventaris Endpoint](docs/endpoint-inventory.md) (English).
 - PHP 8.2+
 - Laravel 11, 12, atau 13
 
+> **Catatan Laravel 11:** masih didukung demi kompatibilitas, tetapi Laravel 11 sudah melewati masa dukungan keamanannya dan membawa advisory yang tidak akan dipatch — Composer versi baru bahkan memblokir instalasinya secara default. Untuk aplikasi pembayaran, sangat disarankan memakai Laravel 12+.
+
 ## Lisensi
 
 [MIT](LICENSE). Paket tidak resmi — tidak berafiliasi dengan PT Abadi Singapay Indonesia.

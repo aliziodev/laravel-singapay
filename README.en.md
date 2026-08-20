@@ -167,6 +167,8 @@ Technical reference: [Endpoint Inventory](docs/endpoint-inventory.md).
 - PHP 8.2+
 - Laravel 11, 12, or 13
 
+> **Laravel 11 note:** still supported for compatibility, but Laravel 11 is past its security-fix window and carries advisories that will never be patched — newer Composer versions even block installing it by default. For payment applications, Laravel 12+ is strongly recommended.
+
 ## License
 
 [MIT](LICENSE). Unofficial package — not affiliated with PT Abadi Singapay Indonesia.
