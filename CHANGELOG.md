@@ -1,3 +1,13 @@
+## <small>1.4.2 (2026-08-20)</small>
+
+* Merge branch 'main' of https://github.com/aliziodev/laravel-singapay ([88fa01a](https://github.com/aliziodev/laravel-singapay/commit/88fa01a))
+* docs: document payment-method whitelisting and retail outlet ([a5f3958](https://github.com/aliziodev/laravel-singapay/commit/a5f3958))
+* docs: record how the dashboard actually delivers webhooks ([a3ec061](https://github.com/aliziodev/laravel-singapay/commit/a3ec061))
+* docs: settle the sandbox webhook question and the amount-typing trap ([6a494b2](https://github.com/aliziodev/laravel-singapay/commit/6a494b2))
+* fix: match the hyphenated expiration event names SingaPay actually sends ([979b6aa](https://github.com/aliziodev/laravel-singapay/commit/979b6aa))
+* fix: send check-beneficiary as GET and record what sandbox proved ([f904f7d](https://github.com/aliziodev/laravel-singapay/commit/f904f7d))
+* fix: stop the money-out guard from blocking direct-debit charges ([19d3cf0](https://github.com/aliziodev/laravel-singapay/commit/19d3cf0))
+
 ## <small>1.4.1 (2026-08-20)</small>
 
 * fix: allow guzzlehttp/guzzle ^8.0 ([1cd3c61](https://github.com/aliziodev/laravel-singapay/commit/1cd3c61))
