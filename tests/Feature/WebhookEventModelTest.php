@@ -53,6 +53,21 @@ it('rebuilds the typed event for replay', function (): void {
     Event::assertDispatched(DisbursementProcessed::class);
 });
 
+it('replays both the generic and the typed event, mirroring a live delivery', function (): void {
+    $record = makeWebhookEvent([
+        'event_type' => 'disbursement',
+        'payload' => ['event' => 'disbursement', 'data' => ['reference_number' => 'REF-R']],
+    ]);
+
+    Event::fake([WebhookReceived::class, DisbursementProcessed::class]);
+
+    $record->replay();
+
+    // toEvent() alone would skip WebhookReceived listeners — replay must not.
+    Event::assertDispatched(WebhookReceived::class);
+    Event::assertDispatched(DisbursementProcessed::class, fn (DisbursementProcessed $e): bool => $e->referenceNumber() === 'REF-R');
+});
+
 it('falls back to the generic event for unrecognized types', function (): void {
     $record = makeWebhookEvent(['event_type' => null, 'payload' => ['event' => 'brand-new', 'data' => []]]);
 

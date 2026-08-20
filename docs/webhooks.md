@@ -7,8 +7,8 @@
 1. Paket mendaftarkan `POST /webhooks/singapay` (path bisa diubah) **tanpa** middleware group `web` — tanpa session, tanpa CSRF. Ini penting: SingaPay tidak mengirim token CSRF, jadi route ber-CSRF akan menolak semua delivery dengan 419.
 2. Middleware `VerifyWebhookSignature` memverifikasi `X-Signature` (HMAC-SHA512, perbandingan constant-time) dan menolak `X-Timestamp` di luar toleransi (default ±300 detik) untuk mencegah replay. Delivery yang gagal diverifikasi dijawab **401** tanpa membocorkan alasannya.
 3. Controller mengenali **tipe** webhook dari payload (field `event`, dengan fallback bentuk payload untuk payment link) — bukan dari URL, karena beberapa tipe berbagi satu URL callback.
-4. Duplikat (SingaPay melakukan retry) dikenali lewat hash body di tabel `singapay_webhook_events` dan dijawab 200 tanpa dispatch ulang.
-5. Dua event Laravel dipancarkan: `WebhookReceived` (selalu) dan event spesifik tipe. Listener berjalan sinkron; jika listener melempar exception, SingaPay menerima 5xx dan mengirim ulang — record idempotency baru ditulis **setelah** listener sukses (at-least-once).
+4. Idempotency memakai protokol **claim-then-dispatch**: delivery mengklaim barisnya di tabel `singapay_webhook_events` (kunci = hash body, ditegakkan unique index) **sebelum** dispatch. Duplikat konkuren — termasuk replay sengaja atas delivery bertanda tangan valid dalam jendela toleransi — kalah race insert dan dijawab 200 tanpa dispatch, sehingga listener terpanggil tepat sekali.
+5. Dua event Laravel dipancarkan: `WebhookReceived` (selalu) dan event spesifik tipe. Listener berjalan sinkron; jika listener melempar exception, klaim dilepas dan SingaPay menerima 5xx sehingga retry berikutnya diproses ulang (at-least-once). Klaim yang tertinggal karena worker crash dianggap basi setelah 5 menit dan direbut ulang oleh retry.
 
 ## Konfigurasi di dashboard SingaPay
 
@@ -104,8 +104,9 @@ use Aliziodev\Singapay\Models\WebhookEvent;
 // Inspeksi riwayat
 WebhookEvent::ofType(WebhookType::Disbursement)->latest()->limit(20)->get();
 
-// Replay sebuah delivery melalui listener Anda
-event(WebhookEvent::find($id)->toEvent());
+// Replay sebuah delivery melalui listener Anda — memancarkan event generik
+// DAN event bertipe, persis seperti delivery aslinya
+WebhookEvent::find($id)->replay();
 ```
 
 `toEvent()` membangun ulang objek event bertipe (mis. `DisbursementProcessed`) dari payload tersimpan — berguna saat listener dulu gagal dan Anda ingin memprosesnya ulang.

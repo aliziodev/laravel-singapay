@@ -7,8 +7,8 @@
 1. The package registers `POST /webhooks/singapay` (configurable path) **without** the `web` middleware group — no session, no CSRF. This matters: SingaPay sends no CSRF token, so a CSRF-protected route would reject every delivery with 419.
 2. The `VerifyWebhookSignature` middleware verifies `X-Signature` (HMAC-SHA512, constant-time comparison) and rejects `X-Timestamp` values outside the tolerance window (default ±300s) to block replays. Failed deliveries get a terse **401** that never explains why.
 3. The controller identifies the webhook **type** from the payload (the `event` field, with a payload-shape fallback for payment links) — never from the URL, because several types share one callback URL.
-4. Duplicates (SingaPay retries) are recognized via a body hash in the `singapay_webhook_events` table and acknowledged with 200 without re-dispatching.
-5. Two Laravel events fire: `WebhookReceived` (always) and the type-specific event. Listeners run synchronously; if a listener throws, SingaPay receives a 5xx and redelivers — the idempotency record is written only **after** listeners succeed (at-least-once).
+4. Idempotency uses a **claim-then-dispatch** protocol: a delivery claims its row in `singapay_webhook_events` (keyed by body hash, enforced by a unique index) **before** dispatching. Concurrent duplicates — including deliberate replays of a validly signed delivery within the tolerance window — lose the insert race and are acknowledged with 200 without dispatching, so listeners fire exactly once.
+5. Two Laravel events fire: `WebhookReceived` (always) and the type-specific event. Listeners run synchronously; if a listener throws, the claim is released and SingaPay receives a 5xx, so the next retry is reprocessed (at-least-once). Claims stranded by a hard-crashed worker go stale after five minutes and are reclaimed by a later retry.
 
 ## SingaPay dashboard configuration
 
@@ -104,8 +104,9 @@ use Aliziodev\Singapay\Models\WebhookEvent;
 // Inspect history
 WebhookEvent::ofType(WebhookType::Disbursement)->latest()->limit(20)->get();
 
-// Replay a delivery through your listeners
-event(WebhookEvent::find($id)->toEvent());
+// Replay a delivery through your listeners — dispatches the generic
+// AND the typed event, exactly like the original delivery
+WebhookEvent::find($id)->replay();
 ```
 
 `toEvent()` rebuilds the typed event object (e.g. `DisbursementProcessed`) from the stored payload — handy when a listener failed and you want to reprocess.

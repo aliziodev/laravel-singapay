@@ -6,6 +6,7 @@ namespace Aliziodev\Singapay\Models;
 
 use Aliziodev\Singapay\Enums\WebhookType;
 use Aliziodev\Singapay\Events\WebhookReceived;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
@@ -77,12 +78,12 @@ class WebhookEvent extends Model
     }
 
     /**
-     * Rebuild the event object for this delivery — dispatch it to replay
-     * the delivery through your listeners:
+     * Rebuild the (typed) event object for this delivery.
      *
-     * ```php
-     * event($webhookEvent->toEvent());
-     * ```
+     * Note: dispatching only this object skips listeners bound to the
+     * generic {@see WebhookReceived} class — Laravel resolves listeners by
+     * exact class, not parent classes. Use {@see replay()} to mirror a
+     * live delivery exactly.
      */
     public function toEvent(): WebhookReceived
     {
@@ -92,6 +93,30 @@ class WebhookEvent extends Model
         return $type instanceof WebhookType
             ? $type->makeEvent($payload)
             : new WebhookReceived($payload);
+    }
+
+    /**
+     * Re-dispatch this delivery exactly like the webhook controller did on
+     * arrival: the generic {@see WebhookReceived} event first, then the
+     * type-specific event — so every listener that saw the live delivery
+     * sees the replay too.
+     *
+     * ```php
+     * WebhookEvent::find($id)->replay();
+     * ```
+     */
+    public function replay(?Dispatcher $events = null): void
+    {
+        $events ??= app(Dispatcher::class);
+
+        $payload = $this->payload ?? [];
+        $type = $this->webhookType();
+
+        $events->dispatch(new WebhookReceived($payload, $type));
+
+        if ($type instanceof WebhookType) {
+            $events->dispatch($type->makeEvent($payload));
+        }
     }
 
     /**
