@@ -112,19 +112,13 @@ final readonly class WebhookVerifier
      */
     private function candidateHashes(string $rawBody): array
     {
-        $decoded = json_decode($rawBody, true);
-
-        if (! is_array($decoded)) {
+        if (! is_array(json_decode($rawBody, true))) {
             throw WebhookVerificationException::invalidBody();
         }
 
-        $this->sortRecursively($decoded);
-
-        $normalized = json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
         $candidates = [];
 
-        if (is_string($normalized)) {
+        if (($normalized = self::normalizeBody($rawBody)) !== null) {
             $candidates[] = hash('sha256', $normalized);
         }
 
@@ -134,18 +128,42 @@ final readonly class WebhookVerifier
     }
 
     /**
+     * Normalize a raw webhook body exactly like the gateway's verification
+     * samples: parse as associative arrays, recursively ksort() keys in
+     * byte order, re-encode with unescaped unicode and slashes.
+     *
+     * Shared by verification and by the consumer test helpers that forge
+     * correctly signed deliveries. Returns null when the body cannot be
+     * normalized (not a JSON object/array).
+     */
+    public static function normalizeBody(string $rawBody): ?string
+    {
+        $decoded = json_decode($rawBody, true);
+
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        self::sortRecursively($decoded);
+
+        $normalized = json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return is_string($normalized) ? $normalized : null;
+    }
+
+    /**
      * Recursive byte-order key sort, mirroring the official PHP sample
      * (`ksort($array, SORT_STRING)` at every level).
      *
      * @param  array<array-key, mixed>  $array
      */
-    private function sortRecursively(array &$array): void
+    private static function sortRecursively(array &$array): void
     {
         ksort($array, SORT_STRING);
 
         foreach ($array as &$value) {
             if (is_array($value)) {
-                $this->sortRecursively($value);
+                self::sortRecursively($value);
             }
         }
     }

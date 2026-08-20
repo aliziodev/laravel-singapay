@@ -9,6 +9,7 @@ use Aliziodev\Singapay\Facades\SingaPay;
 use Aliziodev\Singapay\Support\JakartaClock;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Aliziodev\Singapay\Testing\SingaPayFake;
+use Aliziodev\Singapay\Webhooks\WebhookVerifier;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -66,16 +67,11 @@ trait InteractsWithSingaPay
         $timestamp = app(JakartaClock::class)->unixSeconds();
         $endpoint = '/'.ltrim($config->webhookPath, '/');
 
-        $decoded = json_decode($rawBody, true);
-        $normalized = is_array($decoded)
-            ? $this->recursiveKsort($decoded)
-            : $rawBody;
-
         $signature = app(RequestSigner::class)->signHashedBody(
             'POST',
             $endpoint,
             $bearerToken,
-            hash('sha256', is_string($normalized) ? $normalized : $rawBody),
+            hash('sha256', WebhookVerifier::normalizeBody($rawBody) ?? $rawBody),
             $timestamp,
             // Sign with the primary webhook key (the HMAC Validation Key
             // when configured, otherwise the client secret) — exactly like
@@ -89,27 +85,5 @@ trait InteractsWithSingaPay
             'X-Timestamp' => (string) $timestamp,
             'X-Signature' => $signature,
         ];
-    }
-
-    /**
-     * Normalize an array the way the gateway does before hashing.
-     *
-     * @param  array<array-key, mixed>  $array
-     */
-    private function recursiveKsort(array $array): string
-    {
-        $sort = function (array &$value) use (&$sort): void {
-            ksort($value, SORT_STRING);
-
-            foreach ($value as &$item) {
-                if (is_array($item)) {
-                    $sort($item);
-                }
-            }
-        };
-
-        $sort($array);
-
-        return (string) json_encode($array, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }
