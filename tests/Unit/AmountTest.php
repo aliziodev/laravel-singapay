@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Aliziodev\Singapay\Exceptions\InvalidAmountException;
 use Aliziodev\Singapay\Support\Amount;
 
-covers(Amount::class);
+covers(Amount::class, InvalidAmountException::class);
 
 it('creates whole-rupiah amounts', function (): void {
     expect(Amount::rupiah(150_000)->value)->toBe(150000)

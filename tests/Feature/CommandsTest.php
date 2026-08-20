@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Aliziodev\Singapay\Tests\TestCase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 
@@ -69,6 +70,12 @@ it('diagnoses the IP whitelist failure mode via singapay:ping', function (): voi
     $this->artisan('singapay:ping')
         ->expectsOutputToContain('egress IP')
         ->assertFailed();
+});
+
+it('fails cleanly when singapay:ping cannot reach the gateway', function (): void {
+    Http::fake(['*' => fn () => throw new ConnectionException('unreachable')]);
+
+    $this->artisan('singapay:ping')->assertFailed();
 });
 
 it('computes a signature from a JSON file via singapay:verify-signature', function (): void {

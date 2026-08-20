@@ -9,7 +9,7 @@ use Aliziodev\Singapay\Support\JsonNormalizer;
 use Aliziodev\Singapay\Webhooks\WebhookVerifier;
 use Carbon\CarbonImmutable;
 
-covers(WebhookVerifier::class);
+covers(WebhookVerifier::class, WebhookVerificationException::class);
 
 const WEBHOOK_SECRET = 'webhook-client-secret';
 const WEBHOOK_TOKEN = 'random-gateway-token';

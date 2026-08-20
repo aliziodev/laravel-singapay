@@ -6,7 +6,7 @@ use Aliziodev\Singapay\Auth\RequestSigner;
 use Aliziodev\Singapay\Exceptions\JsonNormalizationException;
 use Aliziodev\Singapay\Support\JsonNormalizer;
 
-covers(JsonNormalizer::class);
+covers(JsonNormalizer::class, JsonNormalizationException::class);
 
 beforeEach(function (): void {
     $this->normalizer = new JsonNormalizer;

@@ -7,7 +7,7 @@ use Aliziodev\Singapay\Enums\Host;
 use Aliziodev\Singapay\Exceptions\ConfigurationException;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 
-covers(SingaPayConfig::class);
+covers(SingaPayConfig::class, ConfigurationException::class);
 
 function baseConfig(array $overrides = []): array
 {
