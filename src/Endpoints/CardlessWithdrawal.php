@@ -22,9 +22,10 @@ class CardlessWithdrawal extends Endpoint
      * `POST /api/v1.0/cardless-withdrawals/create` — signed (money-out guard applies).
      *
      * @param  array<string, mixed>  $data  Required: `reference_number` (unique per
-     *                                      account, max 64), `customer_name`, `customer_id`, `amount` (multiple of
-     *                                      50,000), `vendor_code` (e.g. CLWD_BRI). `account_id` defaults to the
-     *                                      configured account.
+     *                                      account, max 64), `customer_name`, `customer_id`, `amount` — a **plain
+     *                                      number**, multiple of 50,000, not the `{value, currency}` object used by the
+     *                                      e-wallet money-out endpoints — and `vendor_code` (e.g. CLWD_BRI).
+     *                                      `account_id` defaults to the configured account.
      */
     public function create(array $data): Response
     {

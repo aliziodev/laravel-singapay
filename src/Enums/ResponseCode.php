@@ -44,6 +44,13 @@ enum ResponseCode: string
     case MerchantAccountNotFound = 'SP020';
 
     /**
+     * Undocumented, but returned in practice: a Specific (per-account)
+     * credential is required for this account and the merchant-wide Default
+     * credential was used instead. Observed on money-out endpoints.
+     */
+    case AccountCredentialRequired = 'SP403';
+
+    /**
      * Official description of the code.
      */
     public function description(): string
@@ -70,6 +77,7 @@ enum ResponseCode: string
             self::ValidationError => 'One or more fields failed validation.',
             self::GeneralError => 'An unclassified server-side error occurred.',
             self::MerchantAccountNotFound => 'The specified merchant account does not exist.',
+            self::AccountCredentialRequired => 'This account requires its own Specific credential; the Default merchant credential is not accepted here.',
         };
     }
 

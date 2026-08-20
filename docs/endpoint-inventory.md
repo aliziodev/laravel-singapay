@@ -84,7 +84,7 @@ and an **integer** on the identity host. The SDK casts defensively.
 | GET | `/api/v1.0/disbursement/{account_id}` | `disbursement()->list()` |
 | GET | `/api/v1.0/disbursement/{account_id}/{transaction_id}` | `disbursement()->find()` |
 | POST | `/api/v1.0/disbursement/{account_id}/check-fee` | `disbursement()->checkFee()` |
-| POST | `/api/v1.0/disbursement/{account_id}/check-beneficiary` | `disbursement()->checkBeneficiary()` |
+| GET | `/api/v1.0/disbursement/{account_id}/check-beneficiary` | `disbursement()->checkBeneficiary()` |
 | POST | `/api/v2.0/disbursement/transfer` **[S]** | `disbursement()->transfer()` |
 | POST | `/api/v2.0/disbursement/{account_id}/inquiry-status` | `disbursement()->inquireStatus()` |
 | POST | `/api/v2.0/qris/issuer/mpm/inquiry-merchant` | `qrisMoneyOut()->inquireMerchant()` |
@@ -158,8 +158,11 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 1. **`llms.txt` omits the Card endpoints** — they exist only in
    `openapi.json` (`/v2.0/card/...`). Implemented, flagged PCI.
 2. **`llms.txt` omits `check-beneficiary`** — referenced by the disbursement
-   overview; path recovered (`POST /api/v1.0/disbursement/{account_id}/check-beneficiary`)
-   but its body schema is publicly undocumented. Verify against sandbox.
+   overview. Probed in sandbox 2026-08-21: it is a **GET**, not a POST (POST
+   answers `405 Supported methods: GET, HEAD`), but every GET replies
+   `404 Disbursement Transaction not found` whether parameters are supplied or
+   not, so the accepted query keys are still unknown. Use the KYC bank
+   verification instead; it is documented and works.
 3. **Account update**: docs say `PATCH /accounts/update/{id}` (name/status/
    invite_members); the OpenAPI spec says `PATCH /accounts/update-status/{id}`
    (status only). The SDK exposes both.
@@ -190,6 +193,25 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 15. **Direct-debit charge is signed but is not money-out.** It collects from
     the customer. The SDK guards on a separate `moneyOut` flag so accepting
     direct-debit payments never requires unlocking real disbursement.
+
+16. **`amount` shape is not uniform across money-out.** Disbursement
+    (`check-fee`, `transfer`) and cardless withdrawal want a **plain number**;
+    the `{value, currency}` object is rejected with `422 Validation error
+    amount` / `SP018 "The amount field must be a number."`. The e-wallet
+    money-out endpoints want the **object** and were verified working with it.
+    Verified in sandbox 2026-08-21 across all four shapes.
+
+17. **Undocumented response code `SP403`** — "This account requires its own
+    credential. Please use the account-specific API key." Returned by money-out
+    endpoints when a merchant-wide Default credential is used for an account
+    that has its own Specific credential. Added to `ResponseCode` as
+    `AccountCredentialRequired`. See also discrepancy 10.
+
+18. **The Biller host needs its own partner id.** Its token exchange rejects
+    the payment host's `SINGAPAY_PARTNER_ID` with
+    `403 Invalid X-PARTNER-ID`, and the SDK currently sends one partner id to
+    both hosts. Confirm the separate biller credentials with SingaPay before
+    using PPOB.
 6. **VA `bank_code` enum**: docs list 12 banks, the spec only 5 — the docs are
    right. The SDK does not restrict the value. Probed against sandbox on
    2026-08-21: all twelve `VA_*` codes returned by

@@ -48,7 +48,10 @@ class Disbursement extends Endpoint
      *
      * `POST /api/v1.0/disbursement/{account_id}/check-fee`
      *
-     * @param  array<string, mixed>  $data  `bank_swift_code` (e.g. BRINIDJA), `amount`.
+     * @param  array<string, mixed>  $data  `bank_swift_code` (e.g. BRINIDJA),
+     *                                      `amount` — a **plain number**, not the `{value, currency}` object the
+     *                                      e-wallet money-out endpoints take. The object shape is rejected here with
+     *                                      `422 Validation error amount`.
      * @param  string|null  $accountId  Account ULID.
      */
     public function checkFee(array $data, ?string $accountId = null): Response
@@ -60,21 +63,22 @@ class Disbursement extends Endpoint
      * Validate a destination account number and retrieve the registered
      * holder name — confirm it with your user before transferring.
      *
-     * `POST /api/v1.0/disbursement/{account_id}/check-beneficiary`
+     * `GET /api/v1.0/disbursement/{account_id}/check-beneficiary`
      *
-     * Note: this endpoint is referenced by the official disbursement
-     * overview but its request schema is not publicly documented; mirror
-     * the transfer fields (`bank_code`, `bank_account_number`) and verify
-     * against the sandbox. The KYC service's bank verification
-     * ({@see IdentityVerification::verifyBankAccount()}) is the fully
-     * documented equivalent.
+     * ⚠️ Still only partially verified. The route is definitely a GET — POST
+     * answers `405 Supported methods: GET, HEAD` — but every sandbox GET so
+     * far replies `404 Disbursement Transaction not found`, with or without
+     * parameters, so the accepted query keys remain unconfirmed. Prefer the
+     * KYC service's bank verification
+     * ({@see IdentityVerification::verifyBankAccount()}), which is fully
+     * documented and verified.
      *
-     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $filters  Sent as query parameters.
      * @param  string|null  $accountId  Account ULID.
      */
-    public function checkBeneficiary(array $data, ?string $accountId = null): Response
+    public function checkBeneficiary(array $filters = [], ?string $accountId = null): Response
     {
-        return $this->send(new ApiRequest('POST', "/api/v1.0/disbursement/{$this->accountId($accountId)}/check-beneficiary", body: $data));
+        return $this->send(new ApiRequest('GET', "/api/v1.0/disbursement/{$this->accountId($accountId)}/check-beneficiary", query: $filters));
     }
 
     /**
@@ -87,7 +91,9 @@ class Disbursement extends Endpoint
      *
      * @param  array<string, mixed>  $data  Required: `reference_number` (unique per
      *                                      account, max 64), `bank_code` (3-digit numeric like "014" or SWIFT like
-     *                                      "CENAIDJA"), `bank_account_number` (6–30 digits), `amount`. `account_id`
+     *                                      "CENAIDJA"), `bank_account_number` (6–30 digits), `amount` — a **plain
+     *                                      number** of at least 10,000, not the `{value, currency}` object used by the
+     *                                      e-wallet money-out endpoints. `account_id`
      *                                      defaults to the configured account. Optional: `notes` (max 100).
      */
     public function transfer(array $data): Response
