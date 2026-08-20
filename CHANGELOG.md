@@ -1,3 +1,14 @@
+## <small>1.4.1 (2026-08-20)</small>
+
+* fix: allow guzzlehttp/guzzle ^8.0 ([1cd3c61](https://github.com/aliziodev/laravel-singapay/commit/1cd3c61))
+* fix: enforce the money-out guard inside SingaPay::fake() ([dc7abcc](https://github.com/aliziodev/laravel-singapay/commit/dc7abcc))
+* fix: raise IpNotWhitelistedException when the token exchange rejects the IP ([e64c07a](https://github.com/aliziodev/laravel-singapay/commit/e64c07a))
+* fix: surface per-field validation errors from the v1 envelope ([995a7e3](https://github.com/aliziodev/laravel-singapay/commit/995a7e3))
+* chore: stop publishing the internal prd ([3231d8e](https://github.com/aliziodev/laravel-singapay/commit/3231d8e))
+* test: reach 100% line coverage ([917154e](https://github.com/aliziodev/laravel-singapay/commit/917154e))
+* ci: upload coverage to codecov from the primary cell ([ca4497a](https://github.com/aliziodev/laravel-singapay/commit/ca4497a))
+* docs: expand readme badges and fix the license source ([77e8c96](https://github.com/aliziodev/laravel-singapay/commit/77e8c96))
+
 ## 1.4.0 (2026-08-20)
 
 * test: cover audit-surfaced edges, raising coverage to 99.4% ([b6e67ea](https://github.com/aliziodev/laravel-singapay/commit/b6e67ea))
