@@ -179,3 +179,12 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
    (`data.transaction.type == "pl"` / `data.payment.method == "payment_link"`).
 9. **Settlement schedule and rolling reserve are undocumented** — ask SingaPay
    directly before going to production.
+10. **"Default" vs "Specific" credentials are undocumented.** The dashboard's
+    Credential Details page offers merchant-wide Default credentials and named
+    Specific credentials bound to particular sub-accounts (observed fields:
+    Name, Accounts, Client Secret, API Key), but no docs page describes them.
+    Treat Specific credentials as least-privilege keys: one per product, and
+    make sure `SINGAPAY_ACCOUNT_ID` points at an account assigned to the
+    credential in use, or expect 403/SP015. The dashboard also issues an
+    "HMAC Validation Key" (rotatable) that the docs never mention — see
+    `SINGAPAY_HMAC_KEY`.
