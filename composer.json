@@ -1,0 +1,75 @@
+{
+    "name": "aliziodev/laravel-singapay",
+    "description": "Unofficial Laravel SDK for the SingaPay payment gateway (PT Abadi Singapay Indonesia) — payment links, virtual accounts, QRIS, e-wallet, disbursement, and verified webhooks.",
+    "keywords": [
+        "laravel",
+        "singapay",
+        "payment",
+        "payment-gateway",
+        "indonesia",
+        "qris",
+        "virtual-account",
+        "e-wallet",
+        "disbursement",
+        "webhook"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/aliziodev/laravel-singapay",
+    "authors": [
+        {
+            "name": "Alizio",
+            "email": "aliziodev@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.8",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/http": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "nesbot/carbon": "^2.72|^3.0",
+        "psr/log": "^2.0|^3.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^2.9|^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aliziodev\\Singapay\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aliziodev\\Singapay\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest --compact",
+        "test:coverage": "vendor/bin/pest --coverage --min=80",
+        "lint": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Aliziodev\\Singapay\\SingaPayServiceProvider"
+            ],
+            "aliases": {
+                "SingaPay": "Aliziodev\\Singapay\\Facades\\SingaPay"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

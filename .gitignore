@@ -1,0 +1,20 @@
+# Composer
+/vendor/
+composer.lock
+
+# Testing
+/.phpunit.cache
+/coverage/
+coverage.xml
+.php-cs-fixer.cache
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testbench
+/orchestra/

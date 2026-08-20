@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - database
+    ignoreErrors:
+        # Consumer-facing test helper; nothing inside the package uses it,
+        # which is exactly the point.
+        -
+            identifier: trait.unused
+            path: src/Testing/Concerns/InteractsWithSingaPay.php
