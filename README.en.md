@@ -21,6 +21,7 @@ SingaPay ships no official SDK — every integrator has to reimplement two diffe
 - **Money out** — Disbursements, E-Wallet Top-Ups, QRIS Issuer, Account Transfers, Cardless Withdrawals — behind an explicit guard that defaults to **off**.
 - **Webhooks** — constant-time signature verification, replay protection, built-in idempotency, and 13 ready-to-listen Laravel events.
 - **Auth** — v1.1 (HMAC) / v1.0 (Basic) tokens with cached, lock-protected refresh, plus the separate Biller and Identity/KYC schemes.
+- **Several credentials** — the dashboard's Default and Specific credentials are declared as *connections* and reached by name (`SingaPay::connection('payouts')`), with separate tokens and webhooks verified against all of them.
 - **Testing** — `SingaPay::fake()` with assertions, plus helpers to test your webhook listeners without manual mocks.
 - **Secure by design** — amounts must be integers (floats are rejected before signing), request bodies never reach log files, automatic retries apply to GET only.
 
@@ -31,6 +32,7 @@ SingaPay ships no official SDK — every integrator has to reimplement two diffe
 3. **Never blindly retry money-out.** After `SP001`/`SP005`/a timeout, call `inquireStatus()` with the same reference before doing anything — a blind retry can duplicate a real transfer.
 4. **The Card endpoint is PCI-DSS scope.** Any server touching raw card data falls under PCI-DSS. Use Payment Links unless you fully understand the implications.
 5. **Settlement schedule and rolling reserve are undocumented** by SingaPay — ask them directly before going live.
+6. **Money-out notifications are signed by the Default credential**, even when the transfer was made with a Specific one. An app holding only the Specific secret rejects them all with 401 — silently, visible only in the log. Declare the Default credential as a *connection*.
 
 ## Installation
 

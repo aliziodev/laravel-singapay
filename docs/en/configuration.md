@@ -18,6 +18,37 @@ All configuration lives in `config/singapay.php` (publish via `php artisan singa
 
 Credentials are validated **when used**, not at boot — the app still boots (e.g. in CI) without them.
 
+## Several credentials (connections)
+
+The SingaPay dashboard issues a merchant-wide **Default** credential plus **Specific** credentials bound to particular sub-accounts through an *Assigned Accounts* list. Once an account is assigned to a Specific credential, the Default one is refused for it with SP403 — so an application serving several accounts genuinely needs several credential sets.
+
+The keys above **are** the connection named by `default`, so most applications never touch this. Add an entry only for an *additional* credential set:
+
+```php
+'default' => env('SINGAPAY_CONNECTION', 'main'),
+
+'connections' => [
+    'payouts' => [
+        'client_id' => env('SINGAPAY_PAYOUTS_CLIENT_ID'),
+        'client_secret' => env('SINGAPAY_PAYOUTS_CLIENT_SECRET'),
+        'partner_id' => env('SINGAPAY_PAYOUTS_PARTNER_ID'),
+        'account_id' => env('SINGAPAY_PAYOUTS_ACCOUNT_ID'),
+    ],
+],
+```
+
+```php
+SingaPay::paymentLinks()->create([...]);                      // the default connection
+SingaPay::connection('payouts')->disbursement()->transfer([...]);
+```
+
+The rules:
+
+- Only **credential keys** may be set on a connection: `client_id`, `client_secret`, `partner_id`, `account_id`, `hmac_key`, `auth_version`, `identity`, `biller`. Everything else — the environment, base URLs, the money-out guard, webhooks, logging, timeouts — is application policy and stays shared. Nesting one of those inside a connection **raises an error** rather than being quietly ignored; a `money_out` hidden there would be a dangerous surprise.
+- Keys a connection does not mention are **inherited** from the top level.
+- Each connection's tokens are cached separately (the cache key includes a hash of the `client_id`), so two connections never share a token.
+- **Every** connection's secret is accepted when verifying inbound webhooks — see [webhooks.md](webhooks.md).
+
 ## Base URLs
 
 The three SingaPay hosts (payment, biller, identity) each have sandbox and production URLs under `base_urls`. Only override them if SingaPay assigns you different hosts.
@@ -53,7 +84,7 @@ The six signed endpoints (disbursement transfer, e-wallet top-up, QRIS payment c
 | `webhooks.verify_signature` | `SINGAPAY_WEBHOOK_VERIFY` | `true` | Verify `X-Signature` (never disable in production) |
 | `webhooks.tolerance` | `SINGAPAY_WEBHOOK_TOLERANCE` | `300` | `X-Timestamp` tolerance in seconds (anti-replay) |
 | `webhooks.idempotency` | `SINGAPAY_WEBHOOK_IDEMPOTENCY` | `true` | Record processed deliveries in `singapay_webhook_events` |
-| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | **Extra** keys also accepted during verification, comma-separated. Needed when one callback URL receives deliveries from more than one dashboard credential — money-out notifications come from the Default credential even when the transfer was triggered with a Specific one. Does not affect outbound signatures |
+| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | **Extra** keys beyond every connection's, comma-separated. Only needed for a credential you **receive deliveries from but never call the API with** (a retired one, or someone else's); if you do call the API with it, declare it as a connection instead. Does not affect outbound signatures |
 | `webhooks.middleware` | — | `[]` | Extra middleware, e.g. `['throttle:60,1']` |
 
 The route is registered **without** the `web` group — that group includes CSRF verification, SingaPay sends no CSRF token, and every delivery would bounce with 419 into an endless retry loop.

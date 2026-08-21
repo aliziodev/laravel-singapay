@@ -2,7 +2,21 @@
 
 > 🇬🇧 English version: [docs/en/usage.md](en/usage.md)
 
-Semua contoh memakai facade `SingaPay`. Alternatifnya, inject `Aliziodev\Singapay\SingaPay` (manager) atau `Aliziodev\Singapay\Contracts\SingaPayClientInterface` lewat constructor.
+Semua contoh memakai facade `SingaPay`. Alternatifnya, inject `Aliziodev\Singapay\SingaPay` (SDK untuk koneksi default) atau `Aliziodev\Singapay\Contracts\SingaPayClientInterface` lewat constructor.
+
+## Beberapa kredensial
+
+Kalau merchant Anda memegang lebih dari satu kredensial dashboard — satu Default dan satu Specific per sub-akun — deklarasikan yang tambahan di `singapay.connections`, lalu panggil per nama:
+
+```php
+SingaPay::paymentLinks()->create([...]);                       // koneksi default
+SingaPay::connection('payouts')->disbursement()->transfer([...]);
+
+SingaPay::getDefaultConnection();   // "main"
+SingaPay::connectionNames();        // ["main", "payouts"]
+```
+
+Kalau Anda hanya punya satu kredensial — kasus yang paling umum — lewati saja bagian ini; kunci kredensial di tingkat atas config sudah menjadi koneksi default. Rinciannya di [configuration.md](configuration.md).
 
 ## Objek Response
 

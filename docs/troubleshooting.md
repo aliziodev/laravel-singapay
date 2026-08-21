@@ -39,7 +39,7 @@ SingaPay hanya menerima request dari IP yang terdaftar di dashboard merchant.
 |---|---|---|
 | Semua delivery 419 | Route webhook dibuat manual di `routes/web.php` (kena CSRF) | Pakai route bawaan paket; jangan tempel middleware `web` |
 | Semua delivery 401 | Secret berbeda antara app dan dashboard, atau URL callback (path/query) tidak persis sama dengan yang didaftarkan | Samakan secret & URL; ingat query string ikut ditandatangani |
-| **Hanya** delivery money-out yang 401, money-in normal | Notifikasi money-out ditandatangani kredensial **Default**, sementara app memakai secret kredensial Specific | Daftarkan client secret Default di `SINGAPAY_WEBHOOK_SECRETS` |
+| **Hanya** delivery money-out yang 401, money-in normal | Notifikasi money-out ditandatangani kredensial **Default**, sementara app memakai secret kredensial Specific | Deklarasikan kredensial Default sebagai koneksi (`connections`) — secret tiap koneksi otomatis diterima saat verifikasi |
 | Delivery dobel diproses dua kali | `webhooks.idempotency` dimatikan, atau migration belum dijalankan | `php artisan migrate` dan biarkan idempotency menyala |
 | Event tidak terpancar | Listener terdaftar untuk kelas yang salah | Dengarkan kelas event spesifik atau `WebhookReceived`; cek `event_type` di tabel `singapay_webhook_events` |
 | SingaPay terus me-retry | Listener melempar exception → app menjawab 5xx | Lihat log; pindahkan kerja berat ke queued job |

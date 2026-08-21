@@ -41,14 +41,26 @@ The "webhooks follow the credential" rule above holds for money-in, but it is no
 
 So an app using a Specific credential (and SP403 forces exactly that for an account that owns one) rejects every money-out notification with 401 — silently, because all you see is a `singapay.webhook.rejected` line in the log.
 
-The fix is to list that other credential's client secret in `webhooks.secrets`:
+The fix is to declare that other credential as a **connection**. Every connection's secret automatically joins the verification candidates.
 
-```dotenv
-SINGAPAY_CLIENT_SECRET=secret-of-the-credential-the-API-calls-use
-SINGAPAY_WEBHOOK_SECRETS=default-credential-secret,another-credential-secret
+```php
+'connections' => [
+    'default-credential' => [
+        'client_id' => env('SINGAPAY_DEFAULT_CLIENT_ID'),
+        'client_secret' => env('SINGAPAY_DEFAULT_CLIENT_SECRET'),
+    ],
+],
 ```
 
-Every key listed there joins the verification candidates, each compared in constant time, and **outbound** signatures still use `client_secret` alone — so adding keys here loosens nothing except the set of signers you acknowledge.
+If that credential only ever **sends you webhooks** and you never call the API with it — a retired credential, or someone else's — it does not need to be a full connection; just list its secret:
+
+```dotenv
+SINGAPAY_WEBHOOK_SECRETS=retired-credential-secret,another-partys-secret
+```
+
+Keys from both sources are compared in constant time, and **outbound** signatures still use the calling connection's `client_secret` alone — so adding keys here loosens nothing except the set of signers you acknowledge.
+
+A half-configured connection (no secret of its own) is skipped rather than allowed to break verification.
 
 ### The signing key is the Client Secret
 

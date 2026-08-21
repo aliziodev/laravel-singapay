@@ -136,6 +136,62 @@ it('verifies a delivery signed by another credential once its secret is listed',
         ->toBe(['hmac-validation-key', 'sec', 'default-credential-secret']);
 });
 
+it('treats the top-level credentials as the connection named by default', function (): void {
+    $config = SingaPayConfig::forConnection(baseConfig());
+
+    expect($config->connection)->toBe('main')
+        ->and($config->clientId)->toBe('cid');
+});
+
+it('merges a named connection over the shared top-level keys', function (): void {
+    $config = SingaPayConfig::forConnection(baseConfig([
+        'connections' => ['payouts' => ['client_id' => 'payouts-id', 'account_id' => 'payouts-acc']],
+    ]), 'payouts');
+
+    expect($config->connection)->toBe('payouts')
+        ->and($config->clientId)->toBe('payouts-id')
+        ->and($config->accountId)->toBe('payouts-acc')
+        // Not overridden, so inherited from the top level.
+        ->and($config->clientSecret)->toBe('sec')
+        ->and($config->environment)->toBe(Environment::Sandbox);
+});
+
+it('follows a renamed default connection', function (): void {
+    $config = SingaPayConfig::forConnection(baseConfig([
+        'default' => 'payouts',
+        'connections' => ['payouts' => ['client_id' => 'payouts-id']],
+    ]));
+
+    expect($config->connection)->toBe('payouts')
+        ->and($config->clientId)->toBe('payouts-id');
+});
+
+it('refuses a connection that is not configured', function (): void {
+    SingaPayConfig::forConnection(baseConfig([
+        'connections' => ['payouts' => ['client_id' => 'x']],
+    ]), 'ghost');
+})->throws(ConfigurationException::class, 'ghost');
+
+it('refuses a connection that is not an array', function (): void {
+    SingaPayConfig::forConnection(baseConfig(['connections' => ['payouts' => 'nope']]), 'payouts');
+})->throws(ConfigurationException::class, 'connections.payouts');
+
+it('refuses application policy nested inside a connection', function (): void {
+    SingaPayConfig::forConnection(baseConfig([
+        'connections' => ['payouts' => ['client_id' => 'x', 'money_out' => ['enabled' => true]]],
+    ]), 'payouts');
+})->throws(ConfigurationException::class, 'money_out');
+
+it('lists every connection name with the default first', function (): void {
+    $config = baseConfig([
+        'default' => 'main',
+        'connections' => ['payouts' => ['client_id' => 'x'], 'main' => ['client_id' => 'y']],
+    ]);
+
+    expect(SingaPayConfig::connectionNames($config))->toBe(['main', 'payouts'])
+        ->and(SingaPayConfig::connectionNames(baseConfig()))->toBe(['main']);
+});
+
 it('throws when no webhook secret is configured at all', function (): void {
     $config = SingaPayConfig::fromArray(baseConfig(['client_secret' => null]));
 

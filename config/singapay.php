@@ -42,6 +42,39 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Connections (extra credential sets)
+    |--------------------------------------------------------------------------
+    | A merchant can hold several dashboard credentials: a merchant-wide
+    | Default one, plus Specific ones bound to particular sub-accounts.
+    | SP403 refuses the Default credential for an account that has its own,
+    | so an app serving several accounts needs several credential sets.
+    |
+    | The keys above ARE the connection named by "default", so most
+    | applications never touch this. Add an entry only for an ADDITIONAL
+    | credential set, then reach it by name:
+    |
+    |     SingaPay::connection('payouts')->disbursement()->transfer([...]);
+    |
+    | Only credential keys may be set here (client_id, client_secret,
+    | partner_id, account_id, hmac_key, auth_version, identity, biller); a
+    | key nested here that is really application policy — money_out above
+    | all — is rejected rather than silently ignored. Every connection's
+    | secret is accepted when verifying inbound webhooks, because one
+    | callback URL can receive deliveries signed by more than one credential.
+    */
+    'default' => env('SINGAPAY_CONNECTION', 'main'),
+
+    'connections' => [
+        // 'payouts' => [
+        //     'client_id' => env('SINGAPAY_PAYOUTS_CLIENT_ID'),
+        //     'client_secret' => env('SINGAPAY_PAYOUTS_CLIENT_SECRET'),
+        //     'partner_id' => env('SINGAPAY_PAYOUTS_PARTNER_ID'),
+        //     'account_id' => env('SINGAPAY_PAYOUTS_ACCOUNT_ID'),
+        // ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Access token scheme
     |--------------------------------------------------------------------------
     | "1.1" (default): HMAC-SHA512 signed token request.

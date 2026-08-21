@@ -9,6 +9,7 @@ use Aliziodev\Singapay\Endpoints\PaymentLinks;
 use Aliziodev\Singapay\Http\Client;
 use Aliziodev\Singapay\Http\Middleware\VerifyWebhookSignature;
 use Aliziodev\Singapay\SingaPay;
+use Aliziodev\Singapay\SingaPayManager;
 use Aliziodev\Singapay\SingaPayServiceProvider;
 use Aliziodev\Singapay\Support\JsonNormalizer;
 use Aliziodev\Singapay\Support\SingaPayConfig;
@@ -23,7 +24,15 @@ it('binds the SDK services as singletons', function (): void {
         ->and(app(JsonNormalizerInterface::class))->toBeInstanceOf(JsonNormalizer::class)
         ->and(app(TokenRepositoryInterface::class))->toBe(app(TokenRepositoryInterface::class))
         ->and(app(SingaPay::class))->toBe(app(SingaPay::class))
-        ->and(app('singapay'))->toBe(app(SingaPay::class));
+        // The facade root is the connection manager, so "singapay" resolves
+        // to it; calls it does not handle are forwarded to the default
+        // connection, which is why every existing call site still works.
+        ->and(app('singapay'))->toBe(app(SingaPayManager::class))
+        // The manager answers config() itself (one snapshot per connection),
+        // so it is an equal value rather than the same instance.
+        ->and(app('singapay')->config())->toEqual(app(SingaPayConfig::class))
+        // Anything it does not handle is forwarded to the default connection.
+        ->and(app('singapay')->paymentLinks())->toBeInstanceOf(PaymentLinks::class);
 });
 
 it('builds the typed config snapshot from the merged config file', function (): void {

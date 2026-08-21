@@ -2,7 +2,21 @@
 
 > 🇮🇩 Versi Bahasa Indonesia: [docs/usage.md](../usage.md)
 
-All examples use the `SingaPay` facade. Alternatively, inject `Aliziodev\Singapay\SingaPay` (the manager) or `Aliziodev\Singapay\Contracts\SingaPayClientInterface` through the constructor.
+All examples use the `SingaPay` facade. Alternatively, inject `Aliziodev\Singapay\SingaPay` (the SDK for the default connection) or `Aliziodev\Singapay\Contracts\SingaPayClientInterface` through the constructor.
+
+## Several credentials
+
+If your merchant holds more than one dashboard credential — a Default one plus a Specific one per sub-account — declare the extras under `singapay.connections` and reach them by name:
+
+```php
+SingaPay::paymentLinks()->create([...]);                       // the default connection
+SingaPay::connection('payouts')->disbursement()->transfer([...]);
+
+SingaPay::getDefaultConnection();   // "main"
+SingaPay::connectionNames();        // ["main", "payouts"]
+```
+
+With a single credential — by far the common case — skip this entirely; the top-level credential keys already are the default connection. Details in [configuration.md](configuration.md).
 
 ## The Response object
 

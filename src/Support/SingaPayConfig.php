@@ -20,6 +20,34 @@ use SensitiveParameter;
 final readonly class SingaPayConfig
 {
     /**
+     * The connection name used when `singapay.default` is not set.
+     */
+    public const DEFAULT_CONNECTION = 'main';
+
+    /**
+     * Keys a `connections.*` entry may override.
+     *
+     * A connection is a *credential set*, so only credential-shaped keys are
+     * accepted. Everything else — the environment, base URLs, the money-out
+     * guard, webhooks, logging, timeouts — is application policy and stays
+     * top-level, shared by every connection. Rejecting the rest is
+     * deliberate: silently ignoring a `money_out` key nested in a connection
+     * would be a dangerous surprise.
+     *
+     * @var list<string>
+     */
+    public const CONNECTION_KEYS = [
+        'client_id',
+        'client_secret',
+        'partner_id',
+        'account_id',
+        'hmac_key',
+        'auth_version',
+        'identity',
+        'biller',
+    ];
+
+    /**
      * @param  array<string, array{sandbox: string, production: string}>  $baseUrls  Base URLs per host group.
      * @param  list<string>  $webhookExtraSecrets  Extra keys accepted when verifying inbound webhook signatures.
      */
@@ -49,6 +77,7 @@ final readonly class SingaPayConfig
         #[SensitiveParameter] public array $webhookExtraSecrets,
         public bool $loggingEnabled,
         public ?string $loggingChannel,
+        public string $connection = self::DEFAULT_CONNECTION,
     ) {}
 
     /**
@@ -58,7 +87,7 @@ final readonly class SingaPayConfig
      *
      * @throws ConfigurationException When the environment or auth version is unrecognized.
      */
-    public static function fromArray(array $config): self
+    public static function fromArray(array $config, string $connection = self::DEFAULT_CONNECTION): self
     {
         $environment = Environment::tryFrom((string) ($config['environment'] ?? 'sandbox'))
             ?? throw ConfigurationException::invalid('environment', 'must be "sandbox" or "production"');
@@ -95,7 +124,80 @@ final readonly class SingaPayConfig
             webhookExtraSecrets: self::secretList($config['webhooks']['secrets'] ?? null),
             loggingEnabled: (bool) ($config['logging']['enabled'] ?? true),
             loggingChannel: self::stringOrNull($config['logging']['channel'] ?? null),
+            connection: $connection,
         );
+    }
+
+    /**
+     * Build the config for one named connection.
+     *
+     * A merchant can hold several dashboard credentials — a merchant-wide
+     * Default one plus Specific ones bound to particular sub-accounts — and
+     * SP403 forces calls for an assigned account onto the credential that
+     * owns it. Each is declared under `connections`, and only the keys in
+     * {@see CONNECTION_KEYS} may be set there; the rest is inherited from
+     * the top level.
+     *
+     * The top-level credential keys are themselves the connection named by
+     * `default`, so adding a second connection never disturbs the first.
+     *
+     * @param  array<string, mixed>  $config  The whole `singapay` config array.
+     * @param  string|null  $name  Connection name; defaults to `singapay.default`.
+     *
+     * @throws ConfigurationException When the connection is unknown or declares a key it may not.
+     */
+    public static function forConnection(array $config, ?string $name = null): self
+    {
+        $default = self::stringOrNull($config['default'] ?? null) ?? self::DEFAULT_CONNECTION;
+        $name ??= $default;
+
+        $connections = is_array($config['connections'] ?? null) ? $config['connections'] : [];
+        $overrides = $connections[$name] ?? null;
+
+        if ($overrides === null) {
+            if ($name === $default) {
+                return self::fromArray($config, $name);
+            }
+
+            throw ConfigurationException::invalid('connections', "no connection named [{$name}] is configured");
+        }
+
+        if (! is_array($overrides)) {
+            throw ConfigurationException::invalid("connections.{$name}", 'must be an array of credential keys');
+        }
+
+        foreach (array_keys($overrides) as $key) {
+            if (! in_array($key, self::CONNECTION_KEYS, true)) {
+                throw ConfigurationException::invalid(
+                    "connections.{$name}.{$key}",
+                    'is not a per-connection key; only '.implode(', ', self::CONNECTION_KEYS).' may be set on a connection'
+                );
+            }
+        }
+
+        return self::fromArray(array_replace($config, $overrides), $name);
+    }
+
+    /**
+     * Every configured connection name, the default one first.
+     *
+     * @param  array<string, mixed>  $config  The whole `singapay` config array.
+     * @return non-empty-list<string>
+     */
+    public static function connectionNames(array $config): array
+    {
+        $default = self::stringOrNull($config['default'] ?? null) ?? self::DEFAULT_CONNECTION;
+        $connections = is_array($config['connections'] ?? null) ? $config['connections'] : [];
+
+        $names = [$default];
+
+        foreach (array_keys($connections) as $name) {
+            if (is_string($name) && $name !== $default) {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
     }
 
     /**

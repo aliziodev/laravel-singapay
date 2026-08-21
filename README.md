@@ -21,6 +21,7 @@ SingaPay tidak menyediakan SDK resmi — setiap integrator harus mengimplementas
 - **Money Out** — Disbursement, E-Wallet Top-Up, QRIS Issuer, Account Transfer, Cardless Withdrawal — di belakang *guard* eksplisit yang default-nya **mati**.
 - **Webhook** — verifikasi tanda tangan constant-time, proteksi replay, idempotency built-in, dan 13 event Laravel yang siap di-listen.
 - **Autentikasi** — token v1.1 (HMAC) / v1.0 (Basic) dengan cache + lock anti *thundering herd*, plus skema terpisah untuk layanan Biller dan Identity/KYC.
+- **Beberapa kredensial** — kredensial Default dan Specific dari dashboard dideklarasikan sebagai *connections* dan dipanggil per nama (`SingaPay::connection('payouts')`), dengan token yang terpisah dan webhook yang diverifikasi terhadap semuanya.
 - **Testing** — `SingaPay::fake()` dengan assertion, plus helper untuk menguji webhook di aplikasi Anda tanpa mock manual.
 - **Keamanan by design** — nominal wajib integer (float ditolak sebelum ditandatangani), body request tidak pernah masuk log, retry otomatis hanya untuk GET.
 
@@ -31,6 +32,7 @@ SingaPay tidak menyediakan SDK resmi — setiap integrator harus mengimplementas
 3. **Jangan pernah retry money-out secara buta.** Setelah `SP001`/`SP005`/timeout, panggil `inquireStatus()` dengan reference yang sama sebelum melakukan apa pun — retry buta bisa menduplikasi transfer uang sungguhan.
 4. **Endpoint Card = ruang lingkup PCI-DSS.** Server yang menyentuh nomor kartu mentah masuk cakupan PCI-DSS. Gunakan Payment Link kecuali Anda benar-benar paham konsekuensinya.
 5. **Jadwal settlement & rolling reserve tidak terdokumentasi** oleh SingaPay — tanyakan langsung sebelum go-live.
+6. **Notifikasi money-out ditandatangani kredensial Default**, meski transfernya dipicu kredensial Specific. Aplikasi yang hanya memegang secret Specific akan menolak semuanya dengan 401 — diam-diam, hanya terlihat di log. Deklarasikan kredensial Default sebagai *connection*.
 
 ## Instalasi
 

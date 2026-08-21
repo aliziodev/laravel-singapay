@@ -18,6 +18,37 @@ Semua konfigurasi ada di `config/singapay.php` (publish via `php artisan singapa
 
 Kredensial divalidasi **saat dipakai**, bukan saat boot — aplikasi tetap bisa boot (mis. di CI) tanpa kredensial.
 
+## Beberapa kredensial (connections)
+
+Dashboard SingaPay menerbitkan kredensial **Default** (merchant-wide) dan kredensial **Specific** yang diikat ke sub-akun tertentu lewat daftar *Assigned Accounts*. Begitu sebuah akun ditugaskan ke kredensial Specific, kredensial Default ditolak untuk akun itu dengan SP403. Aplikasi yang melayani beberapa akun karena itu memang butuh beberapa set kredensial.
+
+Kunci-kunci di atas **adalah** koneksi bernama `default`, jadi sebagian besar aplikasi tidak perlu menyentuh bagian ini. Tambahkan entri hanya untuk set kredensial **tambahan**:
+
+```php
+'default' => env('SINGAPAY_CONNECTION', 'main'),
+
+'connections' => [
+    'payouts' => [
+        'client_id' => env('SINGAPAY_PAYOUTS_CLIENT_ID'),
+        'client_secret' => env('SINGAPAY_PAYOUTS_CLIENT_SECRET'),
+        'partner_id' => env('SINGAPAY_PAYOUTS_PARTNER_ID'),
+        'account_id' => env('SINGAPAY_PAYOUTS_ACCOUNT_ID'),
+    ],
+],
+```
+
+```php
+SingaPay::paymentLinks()->create([...]);                      // koneksi default
+SingaPay::connection('payouts')->disbursement()->transfer([...]);
+```
+
+Aturannya:
+
+- Hanya **kunci kredensial** yang boleh diisi di sebuah koneksi: `client_id`, `client_secret`, `partner_id`, `account_id`, `hmac_key`, `auth_version`, `identity`, `biller`. Sisanya — environment, base URL, guard money-out, webhook, logging, timeout — adalah kebijakan aplikasi dan tetap dipakai bersama. Menaruh salah satunya di dalam koneksi **ditolak dengan error**, bukan diabaikan diam-diam; `money_out` yang tersembunyi di sana akan jadi kejutan berbahaya.
+- Kunci yang tidak disebut di sebuah koneksi **diwarisi** dari tingkat atas.
+- Token tiap koneksi disimpan terpisah (kunci cache-nya memuat hash `client_id`), jadi dua koneksi tidak pernah berbagi token.
+- **Semua** secret koneksi ikut diterima saat memverifikasi webhook masuk — lihat [webhooks.md](webhooks.md).
+
 ## Base URL
 
 Tiga host SingaPay (payment, biller, identity) masing-masing punya URL sandbox dan production di `base_urls`. Ubah hanya jika SingaPay memberi Anda host berbeda.
@@ -53,7 +84,7 @@ Enam endpoint bertanda tangan (disbursement transfer, e-wallet top-up, QRIS paym
 | `webhooks.verify_signature` | `SINGAPAY_WEBHOOK_VERIFY` | `true` | Verifikasi `X-Signature` (jangan dimatikan di produksi) |
 | `webhooks.tolerance` | `SINGAPAY_WEBHOOK_TOLERANCE` | `300` | Toleransi `X-Timestamp` dalam detik (anti-replay) |
 | `webhooks.idempotency` | `SINGAPAY_WEBHOOK_IDEMPOTENCY` | `true` | Simpan delivery yang sudah diproses di tabel `singapay_webhook_events` |
-| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | Kunci **tambahan** yang ikut diterima saat verifikasi, dipisah koma. Perlu bila satu URL callback menerima delivery dari lebih dari satu kredensial dashboard — notifikasi money-out datang dari kredensial Default meski transfernya dipicu kredensial Specific. Tidak memengaruhi tanda tangan keluar |
+| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | Kunci **tambahan** di luar semua koneksi, dipisah koma. Hanya perlu untuk kredensial yang Anda **terima kirimannya tapi tidak pernah pakai memanggil API** (kredensial lama, atau milik pihak lain); kalau Anda memanggil API dengannya, deklarasikan sebagai koneksi saja. Tidak memengaruhi tanda tangan keluar |
 | `webhooks.middleware` | — | `[]` | Middleware tambahan, mis. `['throttle:60,1']` |
 
 Route didaftarkan **tanpa** group `web` — group `web` menyertakan verifikasi CSRF, sementara SingaPay tidak mengirim token CSRF, sehingga setiap delivery akan ditolak 419 dan berputar di antrean retry selamanya.

@@ -17,7 +17,6 @@ use Aliziodev\Singapay\Console\Commands\VerifySignatureCommand;
 use Aliziodev\Singapay\Contracts\JsonNormalizerInterface;
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
 use Aliziodev\Singapay\Contracts\TokenRepositoryInterface;
-use Aliziodev\Singapay\Http\Client;
 use Aliziodev\Singapay\Http\Controllers\WebhookController;
 use Aliziodev\Singapay\Http\Middleware\VerifyWebhookSignature;
 use Aliziodev\Singapay\Support\JakartaClock;
@@ -25,12 +24,8 @@ use Aliziodev\Singapay\Support\JsonNormalizer;
 use Aliziodev\Singapay\Support\SingaPayConfig;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Log\LogManager;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 
 /**
  * Wires the SDK into the Laravel container and registers the webhook route,
@@ -42,12 +37,11 @@ class SingaPayServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/singapay.php', 'singapay');
 
-        $this->app->singleton(SingaPayConfig::class, function (Application $app): SingaPayConfig {
-            /** @var array<string, mixed> $config */
-            $config = $app->make('config')->get('singapay', []);
+        $this->app->singleton(SingaPayManager::class, fn (Application $app): SingaPayManager => new SingaPayManager($app));
 
-            return SingaPayConfig::fromArray($config);
-        });
+        // The default connection stays directly injectable, so type-hinting
+        // any of these keeps resolving what it always did.
+        $this->app->singleton(SingaPayConfig::class, fn (Application $app): SingaPayConfig => $app->make(SingaPayManager::class)->config());
 
         $this->app->singleton(JsonNormalizerInterface::class, JsonNormalizer::class);
 
@@ -59,36 +53,32 @@ class SingaPayServiceProvider extends ServiceProvider
             );
         });
 
+        // Stateless — no credential is baked in, so every connection shares them.
         $this->app->singleton(JakartaClock::class);
         $this->app->singleton(AccessTokenSigner::class);
         $this->app->singleton(RequestSigner::class);
         $this->app->singleton(IdentitySigner::class);
-        $this->app->singleton(AccessTokenManager::class);
-        $this->app->singleton(IdentityTokenManager::class);
 
-        $this->app->singleton(SingaPayClientInterface::class, function (Application $app): Client {
-            $config = $app->make(SingaPayConfig::class);
+        $this->app->singleton(AccessTokenManager::class, fn (Application $app): AccessTokenManager => $app->make(SingaPayManager::class)->tokens());
+        $this->app->singleton(IdentityTokenManager::class, fn (Application $app): IdentityTokenManager => $app->make(SingaPayManager::class)->identityTokens());
+        // Bound with a "connection" parameter so every connection's client is
+        // built through the container and picks up any registered extender.
+        // Passing a parameter bypasses the shared instance, so only the
+        // default connection is cached — which is what callers expect.
+        $this->app->singleton(SingaPayClientInterface::class, function (Application $app, array $parameters): SingaPayClientInterface {
+            $connection = $parameters['connection'] ?? null;
 
-            return new Client(
-                http: $app->make(HttpFactory::class),
-                config: $config,
-                tokens: $app->make(AccessTokenManager::class),
-                identityTokens: $app->make(IdentityTokenManager::class),
-                signer: $app->make(RequestSigner::class),
-                normalizer: $app->make(JsonNormalizerInterface::class),
-                clock: $app->make(JakartaClock::class),
-                logger: $this->resolveLogger($app, $config),
-            );
+            return $app->make(SingaPayManager::class)->buildClient(is_string($connection) ? $connection : null);
         });
+        // Built from the container's own client and config so the default
+        // connection shares their identity: app(SingaPay::class)->client()
+        // is app(SingaPayClientInterface::class), as it always was.
+        $this->app->singleton(SingaPay::class, fn (Application $app): SingaPay => new SingaPay(
+            $app->make(SingaPayClientInterface::class),
+            $app->make(SingaPayConfig::class),
+        ));
 
-        $this->app->singleton(SingaPay::class, function (Application $app): SingaPay {
-            return new SingaPay(
-                $app->make(SingaPayClientInterface::class),
-                $app->make(SingaPayConfig::class),
-            );
-        });
-
-        $this->app->alias(SingaPay::class, 'singapay');
+        $this->app->alias(SingaPayManager::class, 'singapay');
     }
 
     public function boot(): void
@@ -149,17 +139,5 @@ class SingaPayServiceProvider extends ServiceProvider
             PingCommand::class,
             VerifySignatureCommand::class,
         ]);
-    }
-
-    /**
-     * Resolve the logger the HTTP client writes request metadata to.
-     */
-    protected function resolveLogger(Application $app, SingaPayConfig $config): LoggerInterface
-    {
-        if (! $config->loggingEnabled) {
-            return new NullLogger;
-        }
-
-        return $app->make(LogManager::class)->channel($config->loggingChannel);
     }
 }

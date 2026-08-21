@@ -29,6 +29,8 @@ $this->app->extend(SingaPayClientInterface::class,
     fn ($client) => new MeteredClient($client, app(Metrics::class)));
 ```
 
+Decorator berlaku untuk **semua** koneksi, bukan hanya koneksi default: client tiap koneksi dibangun lewat container, jadi instrumentasi yang Anda pasang di sini tidak akan melewatkan panggilan dari `SingaPay::connection('payouts')`.
+
 ## Memanggil endpoint yang belum dibungkus SDK
 
 Tidak perlu menunggu rilis paket:

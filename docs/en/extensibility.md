@@ -29,6 +29,8 @@ $this->app->extend(SingaPayClientInterface::class,
     fn ($client) => new MeteredClient($client, app(Metrics::class)));
 ```
 
+Decoration covers **every** connection, not only the default one: each connection's client is built through the container, so instrumentation added here will not miss calls made through `SingaPay::connection('payouts')`.
+
 ## Calling endpoints the SDK doesn't wrap yet
 
 No need to wait for a package release:

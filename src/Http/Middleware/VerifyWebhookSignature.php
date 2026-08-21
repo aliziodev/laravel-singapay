@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Aliziodev\Singapay\Http\Middleware;
 
 use Aliziodev\Singapay\Exceptions\WebhookVerificationException;
-use Aliziodev\Singapay\Support\SingaPayConfig;
+use Aliziodev\Singapay\SingaPayManager;
 use Aliziodev\Singapay\Webhooks\WebhookVerifier;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +26,7 @@ final class VerifyWebhookSignature
 {
     public function __construct(
         private readonly WebhookVerifier $verifier,
-        private readonly SingaPayConfig $config,
+        private readonly SingaPayManager $manager,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -35,7 +35,9 @@ final class VerifyWebhookSignature
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $this->config->webhookVerifySignature) {
+        $config = $this->manager->config();
+
+        if (! $config->webhookVerifySignature) {
             return $next($request);
         }
 
@@ -46,8 +48,8 @@ final class VerifyWebhookSignature
                 timestamp: $request->header('X-Timestamp'),
                 authorization: $request->header('Authorization'),
                 endpoint: $request->getRequestUri(),
-                clientSecret: $this->config->webhookSecrets(),
-                toleranceSeconds: $this->config->webhookTolerance,
+                clientSecret: $this->manager->webhookSecrets(),
+                toleranceSeconds: $config->webhookTolerance,
             );
         } catch (WebhookVerificationException $exception) {
             $this->logger->warning('singapay.webhook.rejected', [

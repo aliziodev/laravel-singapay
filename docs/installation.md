@@ -44,6 +44,8 @@ Pemetaan dari halaman **Credential Details** di dashboard SingaPay:
 
 > ⚠️ Kesalahan paling umum: menukar **API Key** dengan **Client Secret**. API Key adalah identitas (header), bukan kunci tanda tangan.
 
+Punya lebih dari satu kredensial dashboard (satu Default dan satu Specific per sub-akun)? Deklarasikan yang tambahan sebagai *connections* — lihat [configuration.md](configuration.md).
+
 ## Verifikasi
 
 ```bash

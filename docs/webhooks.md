@@ -41,14 +41,26 @@ Aturan "webhook mengikuti kredensial" di atas benar untuk money-in, tapi tidak l
 
 Akibatnya, aplikasi yang memakai kredensial Specific (dan SP403 memang memaksa demikian untuk akun yang punya kredensial sendiri) akan menolak setiap notifikasi money-out dengan 401 — diam-diam, karena yang terlihat hanya baris `singapay.webhook.rejected` di log.
 
-Solusinya: daftarkan client secret kredensial lain itu di `webhooks.secrets`.
+Solusinya: deklarasikan kredensial lain itu sebagai **koneksi**. Secret setiap koneksi otomatis ikut jadi kandidat verifikasi.
 
-```dotenv
-SINGAPAY_CLIENT_SECRET=secret-kredensial-yang-dipakai-API
-SINGAPAY_WEBHOOK_SECRETS=secret-kredensial-default,secret-kredensial-lain
+```php
+'connections' => [
+    'default-credential' => [
+        'client_id' => env('SINGAPAY_DEFAULT_CLIENT_ID'),
+        'client_secret' => env('SINGAPAY_DEFAULT_CLIENT_SECRET'),
+    ],
+],
 ```
 
-Semua kunci di sana ikut jadi kandidat verifikasi, masing-masing dibandingkan constant-time, dan tanda tangan **keluar** tetap memakai `client_secret` — jadi menambah kunci di sini tidak melonggarkan apa pun selain daftar penanda tangan yang Anda akui.
+Kalau kredensial itu **hanya mengirimi Anda webhook** dan tidak pernah Anda pakai memanggil API — kredensial lama, atau milik pihak lain — tidak perlu dijadikan koneksi utuh; cukup daftarkan secret-nya:
+
+```dotenv
+SINGAPAY_WEBHOOK_SECRETS=secret-kredensial-lama,secret-kredensial-pihak-lain
+```
+
+Semua kunci dari kedua sumber dibandingkan constant-time, dan tanda tangan **keluar** tetap memakai `client_secret` koneksi yang dipakai — jadi menambah kunci di sini tidak melonggarkan apa pun selain daftar penanda tangan yang Anda akui.
+
+Koneksi yang setengah terkonfigurasi (tanpa secret) dilewati, bukan membuat verifikasi gagal.
 
 ### Kunci penanda tangan: Client Secret
 

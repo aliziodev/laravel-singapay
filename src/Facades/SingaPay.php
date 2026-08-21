@@ -7,8 +7,8 @@ namespace Aliziodev\Singapay\Facades;
 use Aliziodev\Singapay\Contracts\SingaPayClientInterface;
 use Aliziodev\Singapay\Exceptions\MoneyOutDisabledException;
 use Aliziodev\Singapay\Http\Response;
-use Aliziodev\Singapay\SingaPay as SingaPayManager;
-use Aliziodev\Singapay\Support\SingaPayConfig;
+use Aliziodev\Singapay\SingaPay as SingaPayConnection;
+use Aliziodev\Singapay\SingaPayManager;
 use Aliziodev\Singapay\Testing\FakeSingaPayClient;
 use Aliziodev\Singapay\Testing\SingaPayFake;
 use Closure;
@@ -47,8 +47,12 @@ use RuntimeException;
  * @method static void assertSentCount(int $count)
  * @method static void assertPaymentLinkCreated(callable|null $callback = null)
  * @method static void assertDisbursementRequested(callable|null $callback = null)
+ * @method static \Aliziodev\Singapay\SingaPay connection(string|null $name = null)
+ * @method static string getDefaultConnection()
+ * @method static list<string> connectionNames()
  *
  * @see SingaPayManager
+ * @see SingaPayConnection
  */
 class SingaPay extends Facade
 {
@@ -59,7 +63,8 @@ class SingaPay extends Facade
      * sent, and responses come from the given fixtures (path pattern =>
      * data array | Response | Closure). Also rebinds
      * {@see SingaPayClientInterface} so code injecting the contract
-     * directly is faked too.
+     * directly is faked too, and every connection — a faked SDK answers
+     * whichever credential set the code under test asks for.
      *
      * The money-out guard still applies: signed requests throw
      * {@see MoneyOutDisabledException} unless
@@ -73,12 +78,17 @@ class SingaPay extends Facade
         $app = static::getFacadeApplication()
             ?? throw new RuntimeException('The SingaPay facade has no application; boot Laravel before calling fake().');
 
-        $config = $app->make(SingaPayConfig::class);
+        $manager = $app->make(SingaPayManager::class);
+        $config = $manager->config();
         $fakeClient = new FakeSingaPayClient($fixtures, $config);
         $fake = new SingaPayFake($fakeClient, $config);
 
+        // Every connection answers with the fake, so code under test that
+        // reaches for connection('payouts') is faked too.
+        $manager->swap($fake);
+
         $app->instance(SingaPayClientInterface::class, $fakeClient);
-        $app->instance(SingaPayManager::class, $fake);
+        $app->instance(SingaPayConnection::class, $fake);
 
         static::clearResolvedInstance(static::getFacadeAccessor());
 

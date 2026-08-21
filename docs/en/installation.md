@@ -44,6 +44,8 @@ Mapping from the **Credential Details** page in the SingaPay dashboard:
 
 > ⚠️ The most common mistake: swapping the **API Key** and the **Client Secret**. The API Key is an identity (header), not a signing key.
 
+Hold more than one dashboard credential (a Default one plus a Specific one per sub-account)? Declare the extras as *connections* — see [configuration.md](configuration.md).
+
 ## Verify
 
 ```bash
