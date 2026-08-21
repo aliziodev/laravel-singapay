@@ -1,3 +1,19 @@
+## 2.1.0 (2026-08-21)
+
+* docs: characterise whitelisted_payment_method fully ([0e3e33f](https://github.com/aliziodev/laravel-singapay/commit/0e3e33f))
+* docs: correct the OVO and ShopeePay readings ([2bb76b1](https://github.com/aliziodev/laravel-singapay/commit/2bb76b1))
+* docs: correct the sandbox disbursement prefix rule ([ac10cd4](https://github.com/aliziodev/laravel-singapay/commit/ac10cd4))
+* docs: explain why only GoPay has a usable e-wallet simulator ([f95f67f](https://github.com/aliziodev/laravel-singapay/commit/f95f67f))
+* docs: pin down why cardless withdrawal cannot be exercised ([88a069a](https://github.com/aliziodev/laravel-singapay/commit/88a069a))
+* docs: reconcile cardless withdrawal against SingaPay's own spec ([7b33ead](https://github.com/aliziodev/laravel-singapay/commit/7b33ead))
+* docs: record how far each e-wallet vendor goes in sandbox ([08672da](https://github.com/aliziodev/laravel-singapay/commit/08672da))
+* docs: verify the sub-account types and the webhook API that isn't there ([ecbd140](https://github.com/aliziodev/laravel-singapay/commit/ecbd140))
+* docs: warn that an OVO checkout has no URL to redirect to ([976bc47](https://github.com/aliziodev/laravel-singapay/commit/976bc47))
+* docs: warn that the published bank table is wider than the API ([0bcb06a](https://github.com/aliziodev/laravel-singapay/commit/0bcb06a))
+* feat: accept webhook signatures from more than one credential ([4ba7346](https://github.com/aliziodev/laravel-singapay/commit/4ba7346))
+* feat: address several dashboard credentials as named connections ([87a6854](https://github.com/aliziodev/laravel-singapay/commit/87a6854))
+* feat: surface the retail outlet a payment link was paid at ([acda487](https://github.com/aliziodev/laravel-singapay/commit/acda487))
+
 ## 2.0.0 (2026-08-21)
 
 * docs: confirm the identity host needs credentials of its own ([2413744](https://github.com/aliziodev/laravel-singapay/commit/2413744))
