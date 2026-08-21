@@ -150,3 +150,42 @@ it('finds field errors in either envelope generation', function (): void {
         ->and($v2->fieldErrors())->toBe(['amount' => ['required']])
         ->and(Response::fromHttp(httpResponse(200, ['status' => 200, 'success' => true, 'data' => []]))->fieldErrors())->toBe([]);
 });
+
+it('reads the biller envelope, which reuses response_code for a non-SP code', function (): void {
+    // Verbatim from openapi-biller.json: a v2 reading would call this failed,
+    // because "00" is not an SP code.
+    $success = Response::fromHttp(httpResponse(200, [
+        'command' => 'check-balance',
+        'response_code' => '00',
+        'response_text' => 'Operation completed successfully',
+        'data' => ['balance' => 250000],
+    ]));
+
+    expect($success->successful())->toBeTrue()
+        ->and($success->code)->toBeNull()
+        ->and($success->message)->toBe('Operation completed successfully')
+        ->and($success->data('balance'))->toBe(250000);
+});
+
+it('treats every non-00 biller code as a failure', function (string $code): void {
+    $response = Response::fromHttp(httpResponse(422, [
+        'command' => 'detail-bill-transaction',
+        'response_code' => $code,
+        'response_text' => 'Rejected Format Error',
+        'data' => ['data.transaction_id' => 'The data.transaction id field is required.'],
+    ]));
+
+    expect($response->successful())->toBeFalse()
+        ->and($response->message)->toBe('Rejected Format Error');
+})->with(['04', '99', '68']);
+
+it('does not mistake a v2 envelope for a biller one', function (): void {
+    $v2 = Response::fromHttp(httpResponse(200, [
+        'response_code' => 'SP000',
+        'response_message' => 'Successfully',
+        'data' => [],
+    ]));
+
+    expect($v2->successful())->toBeTrue()
+        ->and($v2->code)->toBe(ResponseCode::Success);
+});

@@ -19,6 +19,10 @@ use Illuminate\Support\Collection;
  * - v1: `{"status": 200, "success": true, "data": {...}}` with errors in
  *   `{"error": {"code", "message"}}`
  * - v2: `{"response_code": "SP000", "response_message": "...", "data": {...}}`
+ * - biller: `{"command": "...", "response_code": "00", "response_text": "...",
+ *   "data": {...}}` — note it reuses the key `response_code` for a two-digit
+ *   code that is *not* an SP code, and carries the message under
+ *   `response_text`.
  * - flat: token exchanges and some auxiliary services return the payload
  *   directly with no envelope.
  *
@@ -29,6 +33,12 @@ use Illuminate\Support\Collection;
  */
 final readonly class Response implements Arrayable
 {
+    /**
+     * The biller envelope's success code. Everything else is a failure —
+     * "04" is a format rejection, "99" a general failure.
+     */
+    private const BILLER_SUCCESS = '00';
+
     /**
      * @param  int  $status  HTTP status code.
      * @param  ResponseCode|null  $code  SP response code, when the envelope carries one.
@@ -52,6 +62,21 @@ final readonly class Response implements Arrayable
     {
         $raw = $response->json();
         $raw = is_array($raw) ? $raw : [];
+
+        // Biller envelope, which must be recognised before the v2 one: it
+        // reuses `response_code` for a two-digit code ("00" is success), so a
+        // v2 reading would call every successful biller call a failure.
+        if (self::isBillerEnvelope($raw)) {
+            $data = $raw['data'] ?? [];
+
+            return new self(
+                status: $response->status(),
+                code: null,
+                message: (string) ($raw['response_text'] ?? ''),
+                data: is_array($data) ? $data : [],
+                raw: $raw,
+            );
+        }
 
         // v2 envelope: {"response_code": "SPxxx", "response_message": ..., "data": ...}
         if (array_key_exists('response_code', $raw)) {
@@ -100,6 +125,10 @@ final readonly class Response implements Arrayable
      */
     public function successful(): bool
     {
+        if (self::isBillerEnvelope($this->raw)) {
+            return (string) $this->raw['response_code'] === self::BILLER_SUCCESS;
+        }
+
         // An envelope that carries a response_code is only successful on
         // SP000 — an unknown code is conservatively treated as a failure.
         if (array_key_exists('response_code', $this->raw)) {
@@ -116,6 +145,20 @@ final readonly class Response implements Arrayable
     public function failed(): bool
     {
         return ! $this->successful();
+    }
+
+    /**
+     * Whether the payload is a biller (PPOB) envelope.
+     *
+     * The `command` key is what separates it from the v2 envelope: both use
+     * `response_code`, but the biller's is a two-digit status rather than an
+     * SP code.
+     *
+     * @param  array<array-key, mixed>  $raw
+     */
+    private static function isBillerEnvelope(array $raw): bool
+    {
+        return array_key_exists('command', $raw) && array_key_exists('response_code', $raw);
     }
 
     /**
