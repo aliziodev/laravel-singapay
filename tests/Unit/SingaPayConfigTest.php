@@ -102,6 +102,40 @@ it('deduplicates identical webhook secrets', function (): void {
     expect($config->webhookSecrets())->toBe(['sec']);
 });
 
+it('accepts extra webhook secrets from a comma-separated env string', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig([
+        'webhooks' => ['secrets' => ' default-credential-secret , other-secret ,, '],
+    ]));
+
+    expect($config->webhookSecrets())
+        ->toBe(['sec', 'default-credential-secret', 'other-secret']);
+});
+
+it('accepts extra webhook secrets given as an array', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig([
+        'webhooks' => ['secrets' => ['default-credential-secret', '', 'default-credential-secret']],
+    ]));
+
+    expect($config->webhookSecrets())->toBe(['sec', 'default-credential-secret']);
+});
+
+it('ignores extra webhook secrets that are neither a string nor an array', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig(['webhooks' => ['secrets' => 42]]));
+
+    expect($config->webhookExtraSecrets)->toBe([])
+        ->and($config->webhookSecrets())->toBe(['sec']);
+});
+
+it('verifies a delivery signed by another credential once its secret is listed', function (): void {
+    $config = SingaPayConfig::fromArray(baseConfig([
+        'hmac_key' => 'hmac-validation-key',
+        'webhooks' => ['secrets' => 'default-credential-secret'],
+    ]));
+
+    expect($config->webhookSecrets())
+        ->toBe(['hmac-validation-key', 'sec', 'default-credential-secret']);
+});
+
 it('throws when no webhook secret is configured at all', function (): void {
     $config = SingaPayConfig::fromArray(baseConfig(['client_secret' => null]));
 

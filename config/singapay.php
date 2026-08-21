@@ -148,6 +148,13 @@ return [
         'verify_signature' => (bool) env('SINGAPAY_WEBHOOK_VERIFY', true),
         'tolerance' => (int) env('SINGAPAY_WEBHOOK_TOLERANCE', 300),
         'idempotency' => (bool) env('SINGAPAY_WEBHOOK_IDEMPOTENCY', true),
+        // Additional keys accepted when verifying inbound signatures, on top
+        // of "hmac_key" and "client_secret". One callback URL can legitimately
+        // receive deliveries from more than one dashboard credential — each
+        // signs with its own client secret — and money-out notifications are
+        // signed by the merchant Default credential even when the transfer
+        // was made with a Specific one. Comma-separated, or an array here.
+        'secrets' => env('SINGAPAY_WEBHOOK_SECRETS'),
         'middleware' => [],
         // Retention for the WebhookEvent pruner (`php artisan model:prune`);
         // rows are only needed for SingaPay's retry window (minutes).

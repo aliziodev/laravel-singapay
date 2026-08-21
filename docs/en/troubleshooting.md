@@ -39,6 +39,7 @@ SingaPay only accepts requests from IPs registered in the merchant dashboard.
 |---|---|---|
 | Every delivery 419 | A hand-made webhook route in `routes/web.php` (CSRF applies) | Use the package route; never attach the `web` group |
 | Every delivery 401 | Secret mismatch between app and dashboard, or the callback URL (path/query) differs from what was registered | Align secret & URL; remember the query string is part of the signature |
+| **Only** money-out deliveries 401 while money-in is fine | Money-out notifications are signed by the **Default** credential while the app holds a Specific credential's secret | List the Default credential's client secret in `SINGAPAY_WEBHOOK_SECRETS` |
 | Duplicates processed twice | `webhooks.idempotency` disabled, or the migration was never run | `php artisan migrate` and keep idempotency on |
 | Events never fire | Listener registered for the wrong class | Listen to the specific event class or `WebhookReceived`; inspect `event_type` in `singapay_webhook_events` |
 | SingaPay keeps retrying | A listener throws → your app answers 5xx | Check the logs; move heavy work into queued jobs |

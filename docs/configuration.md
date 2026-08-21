@@ -53,6 +53,7 @@ Enam endpoint bertanda tangan (disbursement transfer, e-wallet top-up, QRIS paym
 | `webhooks.verify_signature` | `SINGAPAY_WEBHOOK_VERIFY` | `true` | Verifikasi `X-Signature` (jangan dimatikan di produksi) |
 | `webhooks.tolerance` | `SINGAPAY_WEBHOOK_TOLERANCE` | `300` | Toleransi `X-Timestamp` dalam detik (anti-replay) |
 | `webhooks.idempotency` | `SINGAPAY_WEBHOOK_IDEMPOTENCY` | `true` | Simpan delivery yang sudah diproses di tabel `singapay_webhook_events` |
+| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | Kunci **tambahan** yang ikut diterima saat verifikasi, dipisah koma. Perlu bila satu URL callback menerima delivery dari lebih dari satu kredensial dashboard — notifikasi money-out datang dari kredensial Default meski transfernya dipicu kredensial Specific. Tidak memengaruhi tanda tangan keluar |
 | `webhooks.middleware` | — | `[]` | Middleware tambahan, mis. `['throttle:60,1']` |
 
 Route didaftarkan **tanpa** group `web` — group `web` menyertakan verifikasi CSRF, sementara SingaPay tidak mengirim token CSRF, sehingga setiap delivery akan ditolak 419 dan berputar di antrean retry selamanya.

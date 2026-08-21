@@ -21,6 +21,7 @@ final readonly class SingaPayConfig
 {
     /**
      * @param  array<string, array{sandbox: string, production: string}>  $baseUrls  Base URLs per host group.
+     * @param  list<string>  $webhookExtraSecrets  Extra keys accepted when verifying inbound webhook signatures.
      */
     public function __construct(
         public Environment $environment,
@@ -45,6 +46,7 @@ final readonly class SingaPayConfig
         public bool $webhookVerifySignature,
         public int $webhookTolerance,
         public bool $webhookIdempotency,
+        #[SensitiveParameter] public array $webhookExtraSecrets,
         public bool $loggingEnabled,
         public ?string $loggingChannel,
     ) {}
@@ -90,6 +92,7 @@ final readonly class SingaPayConfig
             webhookVerifySignature: (bool) ($config['webhooks']['verify_signature'] ?? true),
             webhookTolerance: (int) ($config['webhooks']['tolerance'] ?? 300),
             webhookIdempotency: (bool) ($config['webhooks']['idempotency'] ?? true),
+            webhookExtraSecrets: self::secretList($config['webhooks']['secrets'] ?? null),
             loggingEnabled: (bool) ($config['logging']['enabled'] ?? true),
             loggingChannel: self::stringOrNull($config['logging']['channel'] ?? null),
         );
@@ -129,19 +132,28 @@ final readonly class SingaPayConfig
 
     /**
      * The candidate keys for verifying inbound webhook signatures: the
-     * dashboard's HMAC Validation Key (when configured) and the client
-     * secret. The official docs name the client secret, but the dashboard
-     * issues a dedicated validation key — accepting either (each compared
-     * in constant time) keeps verification correct whichever one the
-     * gateway actually signs with.
+     * dashboard's HMAC Validation Key (when configured), the client secret,
+     * and any extra keys from `webhooks.secrets`. The official docs name the
+     * client secret, but the dashboard issues a dedicated validation key —
+     * accepting either (each compared in constant time) keeps verification
+     * correct whichever one the gateway actually signs with.
+     *
+     * The extra keys matter because one callback URL can receive deliveries
+     * from more than one dashboard credential, each signing with its own
+     * client secret. Verified in sandbox: a disbursement made with a Specific
+     * credential was notified by the merchant Default credential, whose
+     * X-PARTNER-ID it carried and whose client secret signed it. Without the
+     * owning credential's secret in this list such deliveries are rejected.
      *
      * @return non-empty-list<string>
      *
-     * @throws ConfigurationException When neither key is configured.
+     * @throws ConfigurationException When no key is configured.
      */
     public function webhookSecrets(): array
     {
-        $secrets = array_values(array_unique(array_filter([$this->hmacKey, $this->clientSecret])));
+        $secrets = array_values(array_unique(array_filter(
+            [$this->hmacKey, $this->clientSecret, ...$this->webhookExtraSecrets]
+        )));
 
         if ($secrets === []) {
             throw ConfigurationException::missing('client_secret');
@@ -232,5 +244,30 @@ final readonly class SingaPayConfig
     private static function stringOrNull(mixed $value): ?string
     {
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * Parse the extra webhook secrets, accepting either a comma-separated
+     * string (the env form) or an array (the published-config form).
+     *
+     * @return list<string>
+     */
+    private static function secretList(mixed $value): array
+    {
+        $items = match (true) {
+            is_string($value) => explode(',', $value),
+            is_array($value) => $value,
+            default => [],
+        };
+
+        $secrets = [];
+
+        foreach ($items as $item) {
+            if (is_string($item) && ($trimmed = trim($item)) !== '') {
+                $secrets[] = $trimmed;
+            }
+        }
+
+        return array_values(array_unique($secrets));
     }
 }

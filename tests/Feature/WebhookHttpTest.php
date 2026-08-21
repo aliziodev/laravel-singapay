@@ -8,11 +8,16 @@ use Aliziodev\Singapay\Events;
 use Aliziodev\Singapay\Events\WebhookReceived;
 use Aliziodev\Singapay\Facades\SingaPay;
 use Aliziodev\Singapay\Models\WebhookEvent;
+use Aliziodev\Singapay\Support\JakartaClock;
+use Aliziodev\Singapay\Support\SingaPayConfig;
 use Aliziodev\Singapay\Testing\Concerns\InteractsWithSingaPay;
 use Aliziodev\Singapay\Tests\TestCase;
+use Aliziodev\Singapay\Webhooks\WebhookVerifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(InteractsWithSingaPay::class);
 
@@ -285,4 +290,125 @@ it('rejects non-JSON bodies', function (): void {
     reloadSingaPay();
 
     $this->call('POST', '/webhooks/singapay', content: 'not-json')->assertStatus(400);
+});
+
+/**
+ * The genuine sandbox `disbursement` delivery captured on 2026-08-21, verbatim
+ * apart from shortened identifiers. It is signed by the credential that owns
+ * the notification, which is not necessarily the one that made the transfer.
+ *
+ * @return array<string, mixed>
+ */
+function disbursementPayload(): array
+{
+    return [
+        'response_code' => 'SP000',
+        'response_message' => 'Successfully',
+        'event' => 'disbursement',
+        'data' => [
+            'transaction_id' => '1401541222026082121111766336934',
+            'reference_number' => 'WH-OK-260821141116',
+            'transaction_status' => ['code' => '00', 'desc' => 'Success'],
+            'post_timestamp' => '1787321477000',
+            'processed_timestamp' => '1787321478000',
+            'bank' => [
+                'code' => '002',
+                'name' => 'BRI',
+                'account_name' => 'PT SAMPLE COMPANY',
+                'account_number' => '100000000000001',
+            ],
+            'gross_amount' => ['currency' => 'IDR', 'value' => '11000.00'],
+            'fee' => ['currency' => 'IDR', 'value' => '1000'],
+            'net_amount' => ['currency' => 'IDR', 'value' => '10000.00'],
+            'balance_after' => ['currency' => 'IDR', 'value' => '1231011.00'],
+            'notes' => '',
+        ],
+    ];
+}
+
+/**
+ * Post a delivery signed with an arbitrary key, the way a credential the app
+ * is not configured with would sign it.
+ *
+ * @param  array<string, mixed>  $payload
+ * @return TestResponse<Response>
+ */
+function postWebhookSignedWith(string $secret, array $payload): TestResponse
+{
+    $body = (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $timestamp = app(JakartaClock::class)->unixSeconds();
+
+    $signature = app(RequestSigner::class)->signHashedBody(
+        'POST',
+        '/webhooks/singapay',
+        'test-webhook-token',
+        hash('sha256', WebhookVerifier::normalizeBody($body) ?? $body),
+        $timestamp,
+        $secret,
+    );
+
+    return test()->call(
+        'POST',
+        '/webhooks/singapay',
+        server: test()->transformHeadersToServerVars([
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test-webhook-token',
+            'X-Timestamp' => (string) $timestamp,
+            'X-Signature' => $signature,
+        ]),
+        content: $body,
+    );
+}
+
+it('rejects a delivery signed by a credential the app is not configured with', function (): void {
+    Event::fake();
+
+    postWebhookSignedWith('another-credentials-secret', disbursementPayload())
+        ->assertStatus(401);
+
+    Event::assertNotDispatched(WebhookReceived::class);
+    $this->assertDatabaseCount('singapay_webhook_events', 0);
+});
+
+it('accepts that delivery once the other credential secret is listed', function (): void {
+    config()->set('singapay.webhooks.secrets', 'another-credentials-secret');
+    app()->forgetInstance(SingaPayConfig::class);
+
+    Event::fake([Events\DisbursementProcessed::class]);
+
+    postWebhookSignedWith('another-credentials-secret', disbursementPayload())
+        ->assertOk()
+        ->assertJson(['received' => true]);
+
+    Event::assertDispatched(
+        Events\DisbursementProcessed::class,
+        fn (Events\DisbursementProcessed $e): bool => $e->referenceNumber() === 'WH-OK-260821141116'
+            && $e->isSuccessful()
+            && $e->transactionId() === '1401541222026082121111766336934',
+    );
+
+    $this->assertDatabaseHas('singapay_webhook_events', ['event_type' => 'disbursement']);
+});
+
+it('still reports a failed disbursement through the same event', function (): void {
+    config()->set('singapay.webhooks.secrets', ['another-credentials-secret']);
+    app()->forgetInstance(SingaPayConfig::class);
+
+    Event::fake([Events\DisbursementProcessed::class]);
+
+    $failed = disbursementPayload();
+    $failed['response_code'] = 'SP001';
+    $failed['response_message'] = 'Transaction Failure';
+    $failed['data']['reference_number'] = 'WH-NG-260821141116';
+    $failed['data']['transaction_status'] = ['code' => '06', 'desc' => 'Failed'];
+    $failed['data']['failed_reason'] = 'Account validation failed: ACCOUNT-INTERNAL_SERVER_ERROR';
+    $failed['data']['failed_code'] = '500';
+
+    postWebhookSignedWith('another-credentials-secret', $failed)->assertOk();
+
+    Event::assertDispatched(
+        Events\DisbursementProcessed::class,
+        fn (Events\DisbursementProcessed $e): bool => $e->isSuccessful() === false
+            && $e->data('failed_code') === '500',
+    );
 });

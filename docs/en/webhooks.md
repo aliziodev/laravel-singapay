@@ -33,7 +33,22 @@ Two things must line up, and both must be right at once:
 
 Verified 2026-08-21: a genuine `va-transaction` delivery had its signature recomputed against four candidates — the client secret and HMAC key of two different credentials — and only the **client secret of the credential owning the account** matched.
 
-SingaPay also **retries** a delivery answered with 401, roughly a minute later, so a misconfiguration caught quickly does not lose the notification.
+SingaPay also **retries** a delivery answered with 401, about once a minute for roughly eight minutes before giving up. A misconfiguration therefore does not lose the notification outright — but the window to fix it is only a few minutes.
+
+### One URL can receive deliveries from more than one credential
+
+The "webhooks follow the credential" rule above holds for money-in, but it is not the whole story for money-out. Verified 2026-08-21: a `disbursement` **triggered with a Specific credential** was notified by the **Default** credential — the delivery carried Default's `X-PARTNER-ID`, and only Default's client secret matched the signature. The same URL was configured on both credentials.
+
+So an app using a Specific credential (and SP403 forces exactly that for an account that owns one) rejects every money-out notification with 401 — silently, because all you see is a `singapay.webhook.rejected` line in the log.
+
+The fix is to list that other credential's client secret in `webhooks.secrets`:
+
+```dotenv
+SINGAPAY_CLIENT_SECRET=secret-of-the-credential-the-API-calls-use
+SINGAPAY_WEBHOOK_SECRETS=default-credential-secret,another-credential-secret
+```
+
+Every key listed there joins the verification candidates, each compared in constant time, and **outbound** signatures still use `client_secret` alone — so adding keys here loosens nothing except the set of signers you acknowledge.
 
 ### The signing key is the Client Secret
 
@@ -59,7 +74,7 @@ Deliveries arrive with the user-agent `GuzzleHttp/7`. SingaPay does not document
 
 ### Triggering each event in sandbox
 
-Seven of the thirteen event types have been confirmed against genuine SingaPay payloads (2026-08-21). Here is how to provoke them:
+Eight of the thirteen event types have been confirmed against genuine SingaPay payloads (2026-08-21). Here is how to provoke them:
 
 | Event | How to trigger |
 |---|---|
@@ -69,9 +84,10 @@ Seven of the thirteen event types have been confirmed against genuine SingaPay p
 | `payment-link-inquiry` | sent automatically a second before the payment link is paid, when the customer picks a method |
 | `ewallet-native-transaction` | open `checkout_url`, complete it in the DANA sandbox |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
-| `transaction-expiration` | automatic, scheduled batch |
+| `transaction-expiration` | automatic, scheduled batch (~1 minute after the due time) |
+| `disbursement` | `disbursement()->transfer()` to an account number whose prefix selects the outcome — see the sandbox outcome table below |
 
-The rest cannot be provoked in sandbox: `disbursement` (transfers stay `Pending`), `settlement` and `product-expiration` (scheduled batches), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live).
+The rest cannot be provoked in sandbox: `settlement` and `product-expiration` (scheduled batches), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live).
 
 **DANA sandbox account.** E-wallet checkout needs a number registered in DANA's sandbox; your own number is rejected. The working test account is **0817345545** with PIN **123321**, documented by [Faspay](https://docs.faspay.co.id/before-live/account-testing) — Indonesian PSPs share the same DANA sandbox environment. SingaPay does not publish it. Do not guess the PIN: test accounts lock after a few attempts.
 

@@ -33,7 +33,22 @@ Konsekuensinya ada dua, dan keduanya harus benar bersamaan:
 
 Diverifikasi 2026-08-21: sebuah delivery `va-transaction` sungguhan dihitung ulang tanda tangannya dengan empat kandidat — client secret dan HMAC key dari dua kredensial berbeda — dan hanya **client secret milik kredensial yang memiliki akun** yang cocok.
 
-SingaPay juga **mengirim ulang** delivery yang dijawab 401, sekitar satu menit kemudian. Jadi salah konfigurasi tidak langsung kehilangan notifikasi, asal diperbaiki cepat.
+SingaPay juga **mengirim ulang** delivery yang dijawab 401, sekitar satu menit sekali selama kurang lebih delapan menit, lalu menyerah. Jadi salah konfigurasi tidak langsung kehilangan notifikasi — tapi jendela perbaikannya hanya beberapa menit.
+
+### Satu URL bisa menerima delivery dari lebih dari satu kredensial
+
+Aturan "webhook mengikuti kredensial" di atas benar untuk money-in, tapi tidak lengkap untuk money-out. Diverifikasi 2026-08-21: sebuah `disbursement` yang **dipicu dengan kredensial Specific** justru dinotifikasi oleh kredensial **Default** — delivery-nya membawa `X-PARTNER-ID` milik Default, dan hanya client secret Default yang mencocokkan tanda tangannya. URL yang sama terpasang di kedua kredensial.
+
+Akibatnya, aplikasi yang memakai kredensial Specific (dan SP403 memang memaksa demikian untuk akun yang punya kredensial sendiri) akan menolak setiap notifikasi money-out dengan 401 — diam-diam, karena yang terlihat hanya baris `singapay.webhook.rejected` di log.
+
+Solusinya: daftarkan client secret kredensial lain itu di `webhooks.secrets`.
+
+```dotenv
+SINGAPAY_CLIENT_SECRET=secret-kredensial-yang-dipakai-API
+SINGAPAY_WEBHOOK_SECRETS=secret-kredensial-default,secret-kredensial-lain
+```
+
+Semua kunci di sana ikut jadi kandidat verifikasi, masing-masing dibandingkan constant-time, dan tanda tangan **keluar** tetap memakai `client_secret` — jadi menambah kunci di sini tidak melonggarkan apa pun selain daftar penanda tangan yang Anda akui.
 
 ### Kunci penanda tangan: Client Secret
 
@@ -59,7 +74,7 @@ Delivery datang dari user-agent `GuzzleHttp/7`. IP asalnya tidak didokumentasika
 
 ### Memicu tiap event di sandbox
 
-Tujuh dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaPay (2026-08-21). Ini cara memicunya:
+Delapan dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaPay (2026-08-21). Ini cara memicunya:
 
 | Event | Cara memicu |
 |---|---|
@@ -69,9 +84,10 @@ Tujuh dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaPay
 | `payment-link-inquiry` | terkirim otomatis sesaat sebelum pembayaran payment link, saat pelanggan memilih metode |
 | `ewallet-native-transaction` | buka `checkout_url`, selesaikan di DANA sandbox |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
-| `transaction-expiration` | otomatis, batch terjadwal |
+| `transaction-expiration` | otomatis, batch terjadwal (~1 menit setelah jatuh tempo) |
+| `disbursement` | `disbursement()->transfer()` ke nomor rekening berawalan `1000`–`1003` (sukses) atau `1004`/`1006`/`1007`/`4000` (gagal) |
 
-Sisanya belum bisa dipicu di sandbox: `disbursement` (transfer tetap `Pending`), `settlement` dan `product-expiration` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif).
+Sisanya belum bisa dipicu di sandbox: `settlement` dan `product-expiration` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif).
 
 **Akun DANA sandbox.** Checkout e-wallet butuh nomor yang terdaftar di sandbox DANA; nomor asli Anda akan ditolak. Nomor uji yang bekerja adalah **0817345545** dengan PIN **123321** — didokumentasikan oleh [Faspay](https://docs.faspay.co.id/before-live/account-testing), karena PSP Indonesia berbagi environment sandbox DANA yang sama. SingaPay tidak mendokumentasikannya sendiri. Jangan menebak PIN: akun uji punya batas percobaan.
 

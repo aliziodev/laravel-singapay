@@ -53,6 +53,7 @@ The six signed endpoints (disbursement transfer, e-wallet top-up, QRIS payment c
 | `webhooks.verify_signature` | `SINGAPAY_WEBHOOK_VERIFY` | `true` | Verify `X-Signature` (never disable in production) |
 | `webhooks.tolerance` | `SINGAPAY_WEBHOOK_TOLERANCE` | `300` | `X-Timestamp` tolerance in seconds (anti-replay) |
 | `webhooks.idempotency` | `SINGAPAY_WEBHOOK_IDEMPOTENCY` | `true` | Record processed deliveries in `singapay_webhook_events` |
+| `webhooks.secrets` | `SINGAPAY_WEBHOOK_SECRETS` | — | **Extra** keys also accepted during verification, comma-separated. Needed when one callback URL receives deliveries from more than one dashboard credential — money-out notifications come from the Default credential even when the transfer was triggered with a Specific one. Does not affect outbound signatures |
 | `webhooks.middleware` | — | `[]` | Extra middleware, e.g. `['throttle:60,1']` |
 
 The route is registered **without** the `web` group — that group includes CSRF verification, SingaPay sends no CSRF token, and every delivery would bounce with 419 into an endless retry loop.
