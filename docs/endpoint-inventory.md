@@ -258,9 +258,12 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
 7. **Token endpoint version**: docs use v1.1, the OpenAPI spec still
    references v1.0. Configurable via `auth_version` (default 1.1).
 8. **Payment-link webhook has no `event` field** in its documented example,
-   although shared-endpoints claims `payment-link-transaction`. The SDK
-   discriminates by `event` first, then by payload shape
-   (`data.transaction.type == "pl"` / `data.payment.method == "payment_link"`).
+   although shared-endpoints claims `payment-link-transaction`. Settled
+   2026-08-21 against a real delivery: it **does** carry
+   `"event": "payment-link-transaction"`, and it carries both fallback
+   discriminators too (`data.transaction.type: "pl"` and
+   `data.payment.method: "payment_link"`). The SDK's belt-and-braces
+   discrimination is correct; the documented example was simply incomplete.
 
 19. **Webhooks are signed with the Client Secret, not the HMAC Validation
     Key.** Settled on 2026-08-21 against a live delivery: the signature was

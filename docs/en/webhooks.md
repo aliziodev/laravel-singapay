@@ -57,6 +57,26 @@ If you really want the Test button to succeed, the only way is to turn verificat
 
 Deliveries arrive with the user-agent `GuzzleHttp/7`. SingaPay does not document their source IP and it is not guaranteed stable, so never make an IP allowlist your only control — the signature is the authority.
 
+### Triggering each event in sandbox
+
+Seven of the thirteen event types have been confirmed against genuine SingaPay payloads (2026-08-21). Here is how to provoke them:
+
+| Event | How to trigger |
+|---|---|
+| `va-transaction` | Simulator → Virtual Account, enter the VA number |
+| `qris-acquirer-transaction` | Simulator → QRIS & E-Wallet, paste the `qr_data` string |
+| `payment-link-transaction` | open `payment_url`, pay with test card `4111111111111111` (expiry `12/30` in the UI, CVV `123`) |
+| `payment-link-inquiry` | sent automatically a second before the payment link is paid, when the customer picks a method |
+| `ewallet-native-transaction` | open `checkout_url`, complete it in the DANA sandbox |
+| `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
+| `transaction-expiration` | automatic, scheduled batch |
+
+The rest cannot be provoked in sandbox: `disbursement` (transfers stay `Pending`), `settlement` and `product-expiration` (scheduled batches), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live).
+
+**DANA sandbox account.** E-wallet checkout needs a number registered in DANA's sandbox; your own number is rejected. The working test account is **0817345545** with PIN **123321**, documented by [Faspay](https://docs.faspay.co.id/before-live/account-testing) — Indonesian PSPs share the same DANA sandbox environment. SingaPay does not publish it. Do not guess the PIN: test accounts lock after a few attempts.
+
+**Money-in and money-out payloads differ in shape.** Money-in events arrive in the v1 envelope (`{"status":200,"success":true,"event":...}`), while `ewallet-topup` arrives in the v2 envelope (`{"response_code":"SP000","response_message":...,"event":...}`). The SDK normalises both, but never assume one shape if you read `$event->payload` directly.
+
 ## Event catalogue
 
 | Event | Webhook type | Source |

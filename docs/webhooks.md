@@ -57,6 +57,26 @@ Kalau Anda benar-benar ingin tombol Test lolos, satu-satunya cara adalah mematik
 
 Delivery datang dari user-agent `GuzzleHttp/7`. IP asalnya tidak didokumentasikan SingaPay dan tidak dijamin stabil, jadi jangan jadikan allowlist IP sebagai satu-satunya kontrol — tanda tangan yang menjadi otoritasnya.
 
+### Memicu tiap event di sandbox
+
+Tujuh dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaPay (2026-08-21). Ini cara memicunya:
+
+| Event | Cara memicu |
+|---|---|
+| `va-transaction` | Simulator → Virtual Account, masukkan nomor VA-nya |
+| `qris-acquirer-transaction` | Simulator → QRIS & E-Wallet, tempel string `qr_data` |
+| `payment-link-transaction` | buka `payment_url`, bayar dengan kartu tes `4111111111111111` (kedaluwarsa `12/30` di UI, CVV `123`) |
+| `payment-link-inquiry` | terkirim otomatis sesaat sebelum pembayaran payment link, saat pelanggan memilih metode |
+| `ewallet-native-transaction` | buka `checkout_url`, selesaikan di DANA sandbox |
+| `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
+| `transaction-expiration` | otomatis, batch terjadwal |
+
+Sisanya belum bisa dipicu di sandbox: `disbursement` (transfer tetap `Pending`), `settlement` dan `product-expiration` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif).
+
+**Akun DANA sandbox.** Checkout e-wallet butuh nomor yang terdaftar di sandbox DANA; nomor asli Anda akan ditolak. Nomor uji yang bekerja adalah **0817345545** dengan PIN **123321** — didokumentasikan oleh [Faspay](https://docs.faspay.co.id/before-live/account-testing), karena PSP Indonesia berbagi environment sandbox DANA yang sama. SingaPay tidak mendokumentasikannya sendiri. Jangan menebak PIN: akun uji punya batas percobaan.
+
+**Bentuk payload berbeda antara money-in dan money-out.** Event money-in datang dengan envelope v1 (`{"status":200,"success":true,"event":...}`), sementara `ewallet-topup` datang dengan envelope v2 (`{"response_code":"SP000","response_message":...,"event":...}`). SDK menormalkan keduanya, tapi kalau Anda membaca `$event->payload` mentah, jangan berasumsi satu bentuk.
+
 ## Daftar event
 
 | Event | Tipe webhook | Sumber |
