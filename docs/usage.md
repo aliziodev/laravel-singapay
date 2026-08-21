@@ -154,7 +154,21 @@ SingaPay::paymentLinks()->create([
 ]);
 ```
 
-Gateway menormalkan kode yang Anda kirim, jadi jangan bandingkan hasilnya mentah-mentah: `ALFAMART` kembali sebagai `RETAIL_ALFAMART_LINKQU`.
+Perilakunya, diverifikasi langsung 2026-08-21:
+
+| Yang Anda kirim | Hasilnya |
+|---|---|
+| tidak dikirim sama sekali | ke-20 kode yang memenuhi syarat dipilih otomatis |
+| `['VA_BCA', 'QRIS']` | persis dua itu saja |
+| **`[]` (array kosong)** | **ke-20 lagi — ini BUKAN berarti "tidak ada"** |
+| ada satu kode yang salah | **HTTP 422, seluruh request ditolak** |
+| `['va_bca']` (huruf kecil) | HTTP 422 — kodenya case-sensitive |
+
+Dua catatan lagi. **Urutannya tidak dipertahankan** — `['VA_BCA','QRIS']` kembali sebagai `["QRIS","VA_BCA"]`, jadi jangan pernah membandingkan array yang dikembalikan dengan `===`. Dan gateway menormalkan kode retail: `ALFAMART` kembali sebagai `RETAIL_ALFAMART_LINKQU`, sementara kode VA, QRIS, e-wallet, dan kartu dikembalikan apa adanya.
+
+Kode yang salah ditolak mentah-mentah, bukan diam-diam dibuang — dan itu justru yang Anda inginkan: salah ketik satu kode seharusnya menggagalkan request, bukan diam-diam membuka metode yang ingin Anda tutup.
+
+`update()` juga menerima field ini: bisa mempersempit atau memperluas link yang sudah ada, dan mengirim `null` mengembalikannya ke pilihan otomatis penuh.
 
 > ⚠️ Pembayaran retail sudah diverifikasi penuh (2026-08-21), dan ada kejutannya: **webhook pembayarannya tidak menyebut retail sama sekali** — `data.payment.method` selalu `payment_link`. Kalau Anda perlu tahu pelanggan membayar di Alfamart atau Indomaret, tangkap dari event `payment-link-inquiry` dan jodohkan lewat `reff_no`. Lihat [webhooks.md](webhooks.md).
 

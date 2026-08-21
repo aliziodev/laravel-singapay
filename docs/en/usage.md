@@ -154,7 +154,21 @@ SingaPay::paymentLinks()->create([
 ]);
 ```
 
-The gateway normalises the codes you send, so never compare the result verbatim: `ALFAMART` comes back as `RETAIL_ALFAMART_LINKQU`.
+The behaviour, verified against sandbox on 2026-08-21:
+
+| What you send | What you get |
+|---|---|
+| the field omitted | all 20 eligible codes, auto-selected |
+| `['VA_BCA', 'QRIS']` | exactly those two |
+| **`[]` (empty array)** | **all 20 again — it does NOT mean "none"** |
+| one invalid code among valid ones | **HTTP 422, the whole request rejected** |
+| `['va_bca']` (lowercase) | HTTP 422 — codes are case-sensitive |
+
+Two more notes. **Order is not preserved** — `['VA_BCA','QRIS']` comes back as `["QRIS","VA_BCA"]`, so never compare the echoed array with `===`. And the gateway normalises retail codes: `ALFAMART` returns as `RETAIL_ALFAMART_LINKQU`, while VA, QRIS, e-wallet and card codes are echoed verbatim.
+
+An unknown code is rejected outright rather than silently dropped — which is what you want: a typo should fail the request, not quietly open a method you meant to close.
+
+`update()` accepts the field too: it can narrow or widen an existing link, and passing `null` restores the full auto-selection.
 
 > ⚠️ Retail payments are fully verified (2026-08-21), with a catch: **the paid webhook never mentions retail** — `data.payment.method` is always `payment_link`. To know the customer paid at Alfamart or Indomaret, capture it from the `payment-link-inquiry` event and join on `reff_no`. See [webhooks.md](webhooks.md).
 

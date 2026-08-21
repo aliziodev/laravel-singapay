@@ -335,6 +335,31 @@ exist only as v1; there is no v2 of them.
     product ever changes state, so there is no batch to fire it, which is
     why baits left well past their expiry provoked nothing.
 
+56. **`whitelisted_payment_method`, fully characterised** (2026-08-21).
+    This is the only way to restrict which methods a customer sees, and its
+    edges matter:
+
+    | Input | Result |
+    |---|---|
+    | omitted | all 20 eligible codes are auto-selected |
+    | `['VA_BCA', 'QRIS']` | exactly those two |
+    | **`[]` (empty array)** | **all 20 again — it does *not* mean "none"** |
+    | one invalid code among valid ones | **HTTP 422, the whole request rejected** |
+    | `['va_bca']` (lowercase) | HTTP 422 — codes are case-sensitive |
+
+    Two more things worth knowing. **Order is not preserved**:
+    `['VA_BCA','QRIS']` comes back as `["QRIS","VA_BCA"]`, so never compare
+    the echoed array with `===`. And retail codes are normalised on the way
+    out (`ALFAMART` → `RETAIL_ALFAMART_LINKQU`) while VA, QRIS, e-wallet and
+    card codes are echoed verbatim — so a round-trip comparison needs the
+    normalised form for retail only.
+
+    `update()` accepts the field too: it can narrow or widen an existing
+    link, and passing `null` re-auto-selects the full list. Rejecting an
+    unknown code outright, rather than silently dropping it, is the right
+    call — a typo in a whitelist would otherwise open payment methods the
+    merchant meant to close.
+
 ## Identity host
 
 | Method | Path | SDK method |
