@@ -565,10 +565,50 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     borrowed from the retail codes (`CLWD_BRI_LINKQU`), switch operators
     (ALTO/ARTAJASA/JALIN), case variants and numeric bank codes.
 
-    The spec itself says "contact support for the list of available vendor
-    codes", which is now the only way forward. **Worth reporting to SingaPay:
-    an unrecognised `vendor_code` should answer 422, not 500** — the 500 is
-    what makes the two causes indistinguishable.
+    **Settled by SingaPay's own published docs** (read 2026-08-21), which
+    remove the last doubt:
+
+    - Their success example uses `vendor_code: CLWD_BRI` — exactly the
+      format we sent. The code was never wrong.
+    - The documented response when no vendor is provisioned is
+      **`SP011 Beneficiary Vendor Not Active`** (HTTP 400), and the show
+      endpoint even documents a **503** for "the Cardless Withdrawal feature
+      is not available yet in the current environment". The gateway sends
+      neither; it sends a bare 500.
+    - Replaying their example payload verbatim — `CLWD_BRI`, amount 500,000,
+      `customer_id: CUST-00123`, `customer_name: Budi Santoso` — still 500s.
+
+    So the product is simply not provisioned in this sandbox, and `create()`
+    answers an unhandled 500 instead of the SP011 or 503 its own spec
+    promises. **Worth reporting to SingaPay**, together with the fact that an
+    unrecognised `vendor_code` should be a 422.
+
+    One more documentation defect: the overview's flow diagram shows
+    `POST /cardless-withdrawals/{account_id}` taking `bank_type` and
+    `cust_id`. That route does not exist (404) — the OpenAPI spec is right
+    (`/create`, `vendor_code`, `customer_id`, `account_id` in the body) and
+    the diagram is wrong. The SDK follows the spec.
+
+55. **Cardless withdrawal contract reconciled against the official docs**
+    without a working endpoint (2026-08-21). Everything the SDK sends
+    matches, and the enums already cover the documented outcomes
+    (`TransactionStatus::Initiated` = `01`, plus SP003/SP004/SP011/SP020).
+    Facts now in the docblocks that appear nowhere else:
+
+    - **Create and show are two different contracts for one transaction.**
+      Create answers the v2 envelope (`transaction_status`, `otp_number`,
+      `gross_amount`/`fee`/`net_amount`); show and list answer a flat
+      resource (`status`, `amount`, `fee`, `total_paid`, `otp_expired_at`).
+    - **`balance_after` on the create response is always `"0"`** — not the
+      post-debit balance. Read show or list for the real figure.
+    - On show, `fee` is the platform margin alone and **excludes** the
+      vendor/bank fee; `total_paid` includes both.
+    - `status` on show is lowercase and includes `refunded` and `canceled`;
+      the initial value is `open`, despite the platform enum calling that
+      state `pending`.
+    - A failed or expired withdrawal reverses the **merchant** balance
+      automatically; any customer-side balance is the merchant's to refund.
+    - `create()` is rate-limited.
 
     The read side of the product is entirely healthy: `list()` returns `[]`,
     `find()` answers a proper 404, and `cancel()` answers SP009. Only
