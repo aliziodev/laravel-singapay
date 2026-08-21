@@ -58,3 +58,4 @@ SingaPay only accepts requests from IPs registered in the merchant dashboard.
 - **`ConfigurationException: Missing ... [account_id]`** — calls without an explicit account need `SINGAPAY_ACCOUNT_ID`.
 - **A timeout on a money-out operation** — the outcome is UNKNOWN. Do not retry; call `inquireStatus()` with the same reference.
 - **Settlement schedule / rolling reserve** — undocumented by SingaPay; ask them directly before production.
+- **Cardless withdrawal `create()` answers HTTP 500** — `vendor_code` is required but never validated against a list, so an unrecognised code blows up with a 500 instead of a 422, which is indistinguishable from the product not being provisioned. Ask SingaPay support for the vendor code list; their own spec says to. The read side (`list`, `find`, `cancel`) is healthy.

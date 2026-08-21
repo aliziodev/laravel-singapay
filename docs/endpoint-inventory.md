@@ -544,10 +544,38 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     verified end to end. Note the binding webview asks for the expiry as
     **MM/YY** while the card API demands **YYMM**.
 
-36. **Cardless withdrawal answers HTTP 500 for every input.** Eight different
-    `vendor_code` values, all identical 500s, on a funded account with a valid
-    multiple-of-50,000 amount. The spec itself says "contact support for the
-    list of available vendor codes"; the product looks unprovisioned.
+36. **Cardless withdrawal `create()` cannot be exercised, and the gateway
+    makes it impossible to tell why.** Re-diagnosed 2026-08-21 with 26
+    `vendor_code` candidates across both credentials — every one answered
+    HTTP 500.
+
+    The SDK is demonstrably not at fault: the gateway accepts the signature,
+    parses the body and **runs its validator**. An empty body, a missing
+    `vendor_code` and an amount that is not a multiple of 50,000 each answer
+    `SP018 Validation error`. Auth, signing and body shape are therefore all
+    correct.
+
+    The decisive detail is that `vendor_code` is **required but not validated
+    against any list**. A deliberately absurd value
+    (`DEFINITELY_NOT_A_VENDOR`) produces exactly the same HTTP 500 as every
+    plausible one, so from outside, "wrong code" and "vendor integration not
+    provisioned" are indistinguishable. No vendor catalogue endpoint exists
+    either (eight candidate paths, all 404). Codes tried include
+    `CLWD_{BANK}`, bare bank names, the `{TYPE}_{BRAND}_{PROVIDER}` shape
+    borrowed from the retail codes (`CLWD_BRI_LINKQU`), switch operators
+    (ALTO/ARTAJASA/JALIN), case variants and numeric bank codes.
+
+    The spec itself says "contact support for the list of available vendor
+    codes", which is now the only way forward. **Worth reporting to SingaPay:
+    an unrecognised `vendor_code` should answer 422, not 500** — the 500 is
+    what makes the two causes indistinguishable.
+
+    The read side of the product is entirely healthy: `list()` returns `[]`,
+    `find()` answers a proper 404, and `cancel()` answers SP009. Only
+    `create()` is blocked. Note the dashboard's Cardless Withdrawals
+    simulator only offers "Manually Set CLWD Success" (Customer ID + OTP) —
+    it marks an existing withdrawal as successful and has no create form, so
+    it presupposes the very API call that cannot be made.
 
 37. **QRIS issuer credit is unprovisioned.** `triggerPaymentCredit` answers
     SP019 even when paying a QR generated on a *different* sub-account, so it

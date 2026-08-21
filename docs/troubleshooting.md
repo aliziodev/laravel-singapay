@@ -58,3 +58,4 @@ SingaPay hanya menerima request dari IP yang terdaftar di dashboard merchant.
 - **`ConfigurationException: Missing ... [account_id]`** — pemanggilan tanpa akun eksplisit membutuhkan `SINGAPAY_ACCOUNT_ID`.
 - **Timeout pada operasi money-out** — hasil TIDAK diketahui. Jangan retry; panggil `inquireStatus()` dengan reference yang sama.
 - **Jadwal settlement / rolling reserve** — tidak terdokumentasi oleh SingaPay; tanyakan langsung sebelum produksi.
+- **Cardless withdrawal `create()` menjawab HTTP 500** — `vendor_code` wajib tapi tidak divalidasi terhadap daftar, jadi kode yang tidak dikenal meledak 500 alih-alih 422, dan itu tidak bisa dibedakan dari produk yang belum aktif. Minta daftar vendor code ke support SingaPay; spec mereka sendiri menyuruh begitu. Sisi bacanya (`list`, `find`, `cancel`) sehat.
