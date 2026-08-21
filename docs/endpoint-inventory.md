@@ -247,6 +247,18 @@ exist only as v1; there is no v2 of them.
     OVO "fails on its own" was wrong, it fails only because nothing ever
     confirms the push.
 
+    **Each vendor is routed to a different upstream, which is why only GoPay
+    has a usable simulator.** GoPay's checkout URL is a Midtrans transaction
+    (`tref=...`), so Midtrans's public simulator can settle it — confirmed
+    twice over: after payment that same `tref` reads `FULFILLED` on
+    Midtrans's own page. DANA goes straight to `m.sandbox.dana.id`,
+    ShopeePay straight to `app.uat.shopeepay.co.id`, and OVO nowhere at all.
+    Feeding ShopeePay's `order_sn` or the SingaPay reference to Midtrans's
+    deeplink simulator returns nothing, because the transaction was never
+    created there. Midtrans's simulator index lists QRIS, deeplink, ten VA
+    banks, Alfamart, Indomaret and Akulaku — **no OVO at all**. So there is
+    no Midtrans route to either OVO or ShopeePay; only their own apps.
+
     `payment_channel` is null at creation and filled in after payment:
     `GOPAY` for GoPay, and `BALANCE_` — with a trailing underscore — for
     DANA. Do not match on it exactly.
