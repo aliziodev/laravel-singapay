@@ -332,13 +332,25 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     validates that `amount` equals the amount encoded in `qr_data`
     (`amount inside 'qr_data' and 'amount' request param does not match`).
 
-33. **SP403 is per-account, not per-product.** "This account requires its own
-    credential" is returned for the merchant's assigned account, but a
-    sub-account created through `accounts()->create()` is credential-clean:
-    fund it with `accountTransfer()->transfer()` and the whole disbursement
-    family works — `checkFee` (Rp1,000 on Rp10,000), `transfer`,
-    `inquireStatus`, `find`, plus `ewalletMoneyOut()->triggerTopup()`, which
-    settled to Success. That is the workaround for anyone hitting SP403.
+33. **SP403 means you are calling with the wrong credential for that
+    account.** The dashboard's Credential Details page has an *Assigned
+    Accounts* list: every account named there is served only by that Specific
+    credential, and the merchant-wide Default credential is refused for it
+    with "This account requires its own credential. Please use the
+    account-specific API key." Switching to the Specific credential that owns
+    the account makes `checkFee` and `ewalletMoneyOut()->triggerTopup()`
+    succeed immediately — verified 2026-08-21.
+
+    Accounts that are *not yet assigned to any integration* stay reachable
+    with the Default credential, which is why disbursement worked from a
+    freshly created sub-account while failing on the assigned one. So the
+    rule is simply: use the credential that owns the account.
+
+    Two consequences worth knowing. Webhook URLs are configured **per
+    credential** ("Applies to all accounts sharing this credential"), so
+    switching credentials switches webhook configuration with it. The
+    per-credential *Static IP Address* box can be left empty without breaking
+    calls — IP whitelisting is enforced merchant-wide.
 
 34. **`disbursement()->transfer()` wants `bank_code`, `checkFee()` wants
     `bank_swift_code`.** Sending only a swift code to transfer fails with

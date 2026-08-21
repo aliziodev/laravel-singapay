@@ -73,7 +73,7 @@ it('recognises the undocumented SP403 account-credential code', function (): voi
     // Observed in sandbox on money-out endpoints when the merchant-wide
     // Default credential is used for an account that needs its own key.
     expect(ResponseCode::tryFrom('SP403'))->toBe(ResponseCode::AccountCredentialRequired)
-        ->and(ResponseCode::AccountCredentialRequired->description())->toContain('Specific credential')
+        ->and(ResponseCode::AccountCredentialRequired->description())->toContain('credential that owns it')
         ->and(ResponseCode::AccountCredentialRequired->shouldInquireStatus())->toBeFalse()
         ->and(ResponseCode::AccountCredentialRequired->isRetryable())->toBeFalse();
 });
