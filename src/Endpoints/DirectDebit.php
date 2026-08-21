@@ -10,6 +10,14 @@ use Aliziodev\Singapay\Http\Response;
 /**
  * Direct debit: bind a customer's card once, then charge repeatedly.
  *
+ * ⚠️ **SingaPay lists this product as "SOON" in its own API documentation
+ * navigation** (checked 2026-08-21). The endpoints answer, but the binding
+ * webview cannot be completed in sandbox — no test card is published by
+ * SingaPay, BRI or Ayoconnect — so no binding ever reaches `ACTIVE` and
+ * {@see charge()}, {@see verifyOtp()}, {@see unbindCard()} and
+ * {@see findTransaction()} remain unverifiable end to end. Treat this group
+ * as provisional until SingaPay ships it.
+ *
  * Flow: {@see bindCard()} returns a single-use `redirect_url` (~15 minutes)
  * for the hosted binding webview; poll {@see bindingStatus()} until
  * `PENDING_AUTH` becomes `ACTIVE`; then {@see charge()} by `binding_id`.

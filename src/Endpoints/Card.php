@@ -51,6 +51,11 @@ class Card extends Endpoint
     /**
      * Cancel a card transaction — void or refund depending on its state.
      *
+     * Call it immediately: sandbox settles a `processing` transaction to
+     * `success` within seconds, and any intervening request is enough for the
+     * cancel to come back `SP012 Cannot cancel: transaction status is
+     * success`. A prompt call returns `cancel_type: "void"`.
+     *
      * `PATCH /api/v2.0/card/{account_id}/cancel/{id}`
      *
      * @param  string  $id  Flexible lookup key: numeric DB id, internal

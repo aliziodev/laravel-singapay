@@ -28,7 +28,9 @@ class Subscriptions extends Endpoint
      *                                      `subscription_id` (echoed back, and generated for you when omitted —
      *                                      use it as your correlation key), `merchant_reff_no` (accepted but silently
      *                                      dropped: the plan always comes back with `merchant_reff_no: null`, so do
-     *                                      not rely on it), `currency`, `customer_id`,
+     *                                      not rely on it), `payment_type` (also always echoed back as `null`, even
+     *                                      after the customer has linked a card and the plan is `active`),
+     *                                      `currency`, `customer_id`,
      *                                      `payment_type` (credit_card|gopay), `return_url`, `retry_policy`,
      *                                      `charge_immediately`, `allow_manual_payment`, `allow_user_notification`,
      *                                      `metadata`.
@@ -54,6 +56,14 @@ class Subscriptions extends Endpoint
      * Update a plan in place, or upgrade/downgrade it when `amount`/`items`
      * change (the response then carries an `upgrade` object with proration
      * details).
+     *
+     * The plan must be `active`: updating one still in `pending_card_linking`
+     * fails with `409 Plan must be active to perform an upgrade or
+     * downgrade`. A verified upgrade returns
+     * `upgrade.prorated_charge` — a `bill_id`, the difference as an `amount`,
+     * a `status`, and a `payment_link_url` for collecting it — and while that
+     * charge is `pending` a further update is refused with
+     * `409 Plan cannot be updated in its current state`.
      *
      * `PATCH /api/v2.0/recurring/plans/{id}`
      *

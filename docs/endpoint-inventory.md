@@ -319,6 +319,43 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     validates that `amount` equals the amount encoded in `qr_data`
     (`amount inside 'qr_data' and 'amount' request param does not match`).
 
+33. **SP403 is per-account, not per-product.** "This account requires its own
+    credential" is returned for the merchant's assigned account, but a
+    sub-account created through `accounts()->create()` is credential-clean:
+    fund it with `accountTransfer()->transfer()` and the whole disbursement
+    family works — `checkFee` (Rp1,000 on Rp10,000), `transfer`,
+    `inquireStatus`, `find`, plus `ewalletMoneyOut()->triggerTopup()`, which
+    settled to Success. That is the workaround for anyone hitting SP403.
+
+34. **`disbursement()->transfer()` wants `bank_code`, `checkFee()` wants
+    `bank_swift_code`.** Sending only a swift code to transfer fails with
+    `SP018 'bank_code': 'The bank code field is required.'` The asymmetry is
+    real and easy to trip over.
+
+35. **Direct debit is not live.** SingaPay's own documentation navigation
+    labels the group "Direct Debit (SOON)". Bindings can be created but never
+    reach `ACTIVE` — no sandbox test card is published by SingaPay, BRI or
+    Ayoconnect — so charge, verify-otp, unbind and get-transaction cannot be
+    verified end to end. Note the binding webview asks for the expiry as
+    **MM/YY** while the card API demands **YYMM**.
+
+36. **Cardless withdrawal answers HTTP 500 for every input.** Eight different
+    `vendor_code` values, all identical 500s, on a funded account with a valid
+    multiple-of-50,000 amount. The spec itself says "contact support for the
+    list of available vendor codes"; the product looks unprovisioned.
+
+37. **QRIS issuer credit is unprovisioned.** `triggerPaymentCredit` answers
+    SP019 even when paying a QR generated on a *different* sub-account, so it
+    is not the "cannot pay your own QR" case. `inquireStatus` is fully
+    accepted (SP009 for a reference that does not exist) — note its second
+    argument is `scope` (`issuer`|`acquirer`), not an account id.
+
+38. **Subscription proration, verified.** An upgrade on an `active` plan
+    returns `upgrade.prorated_charge` with a `bill_id`, the difference, a
+    `status` and a `payment_link_url`. While that charge is `pending` any
+    further update is refused with `409 Plan cannot be updated in its current
+    state`. `payment_type` stays `null` even after the card is linked.
+
 32. **KYC contract verified against `swagger.json` without live credentials.**
     All three paths, both verify payloads
     (`request_id, account_number, name, bank_code` /
