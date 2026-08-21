@@ -244,10 +244,23 @@ final readonly class Response implements Arrayable
      *           "errors":{"bank_code":["The selected bank code is invalid."]}}}
      * ```
      *
+     * The biller has no dedicated key at all: on a rejected request its
+     * `data` *is* the field map, keyed by dotted path.
+     *
+     * ```json
+     * {"command":"detail-bill-transaction","response_code":"04",
+     *  "response_text":"Rejected Format Error",
+     *  "data":{"data.transaction_id":"The data.transaction id field is required."}}
+     * ```
+     *
      * @return array<string, mixed>
      */
     public function fieldErrors(): array
     {
+        if (self::isBillerEnvelope($this->raw) && $this->failed()) {
+            return $this->data;
+        }
+
         $errors = $this->data('errors');
 
         if (! is_array($errors) || $errors === []) {

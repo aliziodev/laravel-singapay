@@ -117,14 +117,23 @@ and an **integer** on the identity host. The SDK casts defensively.
 | `/api/v1/postpaid/payment` | same as v2 | `biller()->legacyPostpaidPayment()` |
 
 Biller envelope: `{command, response_code: "00"|"99", response_text, data}`.
-Note it **reuses the key `response_code`** for a two-digit status that is not an
-SP code, and puts the message under `response_text` rather than
-`response_message`. `Response` detects it by the presence of `command` and
-treats `"00"` as success — read as a v2 envelope, every successful biller call
-would look like a failure. Observed codes: `00` success, `04` rejected format
-error, `99` general failure. On `04` the per-field errors arrive as a flat map
-inside `data` (`{"data.transaction_id": "The data.transaction id field is
-required."}`), not under `data.errors`.
+Note it **reuses the key `response_code`** for a status that is not an SP code,
+and puts the message under `response_text` rather than `response_message`.
+`Response` detects it by the presence of `command` and treats `"00"` as success
+— read as a v2 envelope, every successful biller call would look like a failure.
+Codes are not zero-padded consistently: success is `00`, rejected format is
+`04`, general failure `99`, but "transaction not found" is `6`.
+
+**The biller mixes envelopes.** Business replies use the shape above, but a
+`401` comes back in the **v1** shape (`{status, success, error:{code,message}}`)
+with no `command` at all, and a `404` omits `data` entirely. Requiring
+`command` for detection is what makes all three land correctly; a detector
+keyed on `response_code` alone would misread the lot.
+
+On a rejected request the biller's `data` **is** the field-error map, keyed by
+dotted path (`{"data.transaction_id": "The data.transaction id field is
+required."}`) with no `errors` wrapper. `fieldErrors()` returns it for a failed
+biller response and stays empty for a successful one.
 
 All 13 business paths in `openapi-biller.json` are implemented, and the v1 ones
 are exposed only under explicit `legacy*` names — v2 is the default for prepaid

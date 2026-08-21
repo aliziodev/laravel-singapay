@@ -221,3 +221,61 @@ it('treats every non-SUCCESS identity code as a failure', function (string $code
     expect($response->successful())->toBeFalse()
         ->and($response->message)->toBe('insufficient balance');
 })->with(['CLIENT_ERROR', 'UNAUTHORIZED', 'DUPLICATE_REFERENCE', 'INSUFFICIENT_BALANCE', 'SERVER_ERROR', 'INTERNAL_ERROR']);
+
+it('surfaces biller field errors, which live in data with no dedicated key', function (): void {
+    // Verbatim from the biller spec's 422 example.
+    $response = Response::fromHttp(httpResponse(422, [
+        'command' => 'detail-bill-transaction',
+        'response_code' => '04',
+        'response_text' => 'Rejected Format Error',
+        'data' => [
+            'data' => 'The data field is required.',
+            'data.transaction_id' => 'The data.transaction id field is required.',
+        ],
+    ]));
+
+    expect($response->failed())->toBeTrue()
+        ->and($response->fieldErrors())->toBe([
+            'data' => 'The data field is required.',
+            'data.transaction_id' => 'The data.transaction id field is required.',
+        ]);
+});
+
+it('does not mistake a successful biller payload for field errors', function (): void {
+    $response = Response::fromHttp(httpResponse(200, [
+        'command' => 'check-balance',
+        'response_code' => '00',
+        'response_text' => 'Operation completed successfully',
+        'data' => ['balance' => '8910003.00', 'currency' => 'IDR'],
+    ]));
+
+    expect($response->successful())->toBeTrue()
+        ->and($response->fieldErrors())->toBe([])
+        ->and($response->data('balance'))->toBe('8910003.00');
+});
+
+it('reads the v1 envelope the biller uses for auth failures', function (): void {
+    // The biller mixes envelopes: business replies are the biller shape, but
+    // a 401 comes back in the v1 shape with no `command` at all.
+    $response = Response::fromHttp(httpResponse(401, [
+        'status' => 401,
+        'success' => false,
+        'error' => ['code' => 401, 'message' => 'Unauthorized merchant, please sign in'],
+    ]));
+
+    expect($response->failed())->toBeTrue()
+        ->and($response->message)->toBe('Unauthorized merchant, please sign in');
+});
+
+it('treats a single-digit biller code as a failure', function (): void {
+    // The 404 example uses "6", not "06" — codes are not zero-padded.
+    $response = Response::fromHttp(httpResponse(404, [
+        'command' => 'detail-bill-transaction',
+        'response_code' => '6',
+        'response_text' => 'Transaction not found',
+    ]));
+
+    expect($response->failed())->toBeTrue()
+        ->and($response->message)->toBe('Transaction not found')
+        ->and($response->data())->toBe([]);
+});
