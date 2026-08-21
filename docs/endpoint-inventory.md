@@ -418,6 +418,14 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     further update is refused with `409 Plan cannot be updated in its current
     state`. `payment_type` stays `null` even after the card is linked.
 
+41. **The identity host really does need its own credential pair.** Not an
+    assumption — tested 2026-08-21 with three combinations of the payment
+    credentials (client_id + client_secret, API key as client_id, client_id +
+    HMAC key). All three answered `401 invalid credential or signature`. The
+    endpoint itself is reachable and accepts the request shape, so what is
+    missing is genuinely `SINGAPAY_IDENTITY_CLIENT_ID` /
+    `SINGAPAY_IDENTITY_CLIENT_SECRET`, issued separately by SingaPay.
+
 32. **KYC contract verified against `swagger.json` without live credentials.**
     All three paths, both verify payloads
     (`request_id, account_number, name, bank_code` /
