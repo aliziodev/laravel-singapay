@@ -40,6 +40,14 @@ final readonly class ChargeResult
     /**
      * The URL to send the customer to: `payment_url` for payment links,
      * `checkout_url` for e-wallets. Null for VA and QRIS charges.
+     *
+     * **Null for OVO too.** OVO is push-to-pay: the gateway pushes a payment
+     * request to the customer's app using `customer_phone` (which OVO, alone
+     * among the vendors, requires) and returns no URL at all — verified in
+     * sandbox 2026-08-21. DANA returns a web URL only; GoPay and ShopeePay
+     * return a web URL plus an app deeplink in `checkout_url_app`. So always
+     * branch on null instead of redirecting blindly, or an OVO checkout
+     * sends the customer nowhere.
      */
     public function checkoutUrl(): ?string
     {

@@ -206,6 +206,17 @@ $order = SingaPay::ewallet()->createOrder([
 $order->data('checkout_url');
 ```
 
+**Bentuk respons berbeda antar vendor** — diverifikasi langsung di sandbox 2026-08-21:
+
+| Vendor | `checkout_url` | `checkout_url_app` | Catatan |
+|---|---|---|---|
+| `EWALLET_DANA` | ada | — | `customer_phone` opsional |
+| `EWALLET_OVO` | **null** | **null** | *push-to-pay*: `customer_phone` **wajib** (tanpa itu HTTP 422), dan pembayaran didorong ke aplikasi OVO pelanggan — tidak ada URL untuk di-redirect |
+| `EWALLET_GOPAY` | ada | ada (deeplink) | |
+| `EWALLET_SHOPEEPAY` | ada | ada (`shopeepayid://`) | |
+
+Jadi jangan pernah `redirect($order->data('checkout_url'))` tanpa memeriksa null — checkout OVO akan mengirim pelanggan ke mana-mana. Tampilkan instruksi "buka aplikasi OVO Anda" untuk vendor itu.
+
 ## Pembayaran berulang, kartu, dan direct debit
 
 Ketiganya diverifikasi langsung terhadap sandbox pada 2026-08-21. Semuanya money-in — tidak satu pun butuh `SINGAPAY_MONEY_OUT=true`.

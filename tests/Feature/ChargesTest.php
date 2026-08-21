@@ -286,3 +286,33 @@ it('works through the recording fake', function (): void {
 
     $fake->assertPaymentLinkCreated(fn (array $body): bool => $body['reff_no'] === 'INV-9');
 });
+
+it('reports no checkout url for OVO, which is push-to-pay', function (): void {
+    // Verbatim shape of a real sandbox OVO checkout (2026-08-21): both URL
+    // fields are null because the request is pushed to the customer's app.
+    fakeGateway([
+        '*create-order' => Http::response([
+            'response_code' => 'SP000',
+            'response_message' => 'OK',
+            'data' => [
+                'reff_no' => '485200',
+                'ewallet_vendor' => 'EWALLET_OVO',
+                'checkout_url' => null,
+                'checkout_url_app' => null,
+                'customer_phone' => '0817345545',
+            ],
+        ]),
+    ]);
+
+    $ovo = SingaPay::pay('ewallet', [
+        'amount' => 16_000,
+        'vendor' => 'OVO',
+        'customer' => ['phone' => '0817345545'],
+    ]);
+
+    // A consumer that redirects blindly would send the customer nowhere.
+    expect($ovo->successful())->toBeTrue()
+        ->and($ovo->checkoutUrl())->toBeNull()
+        ->and($ovo->data('checkout_url_app'))->toBeNull()
+        ->and($ovo->data('ewallet_vendor'))->toBe('EWALLET_OVO');
+});

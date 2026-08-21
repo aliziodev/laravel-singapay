@@ -208,6 +208,36 @@ exist only as v1; there is no v2 of them.
     so the product sweep is on a different (slower) schedule than the
     transaction sweep.
 
+51. **E-wallet checkout returns a different artifact per vendor, and OVO
+    returns none at all.** All four vendors answer with an identical *key
+    set*, which makes the difference easy to miss — it is in the values.
+    Verified in sandbox 2026-08-21:
+
+    | Vendor | `checkout_url` | `checkout_url_app` |
+    |---|---|---|
+    | `EWALLET_DANA` | `https://m.sandbox.dana.id/...` | null |
+    | `EWALLET_OVO` | **null** | **null** |
+    | `EWALLET_GOPAY` | `https://simulator.sandbox.midtrans...` | deeplink |
+    | `EWALLET_SHOPEEPAY` | `https://app.uat.shopeepay.co.id/...` | `shopeepayid://...` |
+
+    OVO is push-to-pay: the request goes to the customer's app, keyed on
+    `customer_phone` — which OVO alone *requires* (omitting it is HTTP 422,
+    while DANA accepts the call without it). So `checkoutUrl()` is null for
+    OVO by design, and any consumer that redirects without a null check
+    sends the customer nowhere. `payment_channel` is null at creation for
+    every vendor.
+
+52. **Post-refactor live sweep** (2026-08-21, after connections landed).
+    Nineteen endpoint groups re-exercised against the sandbox with the new
+    container wiring: accounts, balance (merchant + account), statements,
+    account transfer, payment links (list, payment methods, v2 create),
+    payment link histories, virtual accounts (list + create), VA
+    transactions, QRIS (list + generate), e-wallet (list + create checkout
+    ×4 vendors), disbursement (list, check-fee, check-beneficiary) and
+    recurring plans — all green. `paymentMethods()` returns two keys,
+    `payment_methods` and `available_codes`, of twenty entries each; count
+    the entries, not the top-level keys.
+
 ## Identity host
 
 | Method | Path | SDK method |
