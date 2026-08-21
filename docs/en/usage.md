@@ -78,6 +78,10 @@ $charge->data('...');      // full response access
 
 **Methods & aliases** (case-insensitive): `payment_link`/`pl`/`link`, `virtual_account`/`va`, `qris`/`qr`, `ewallet`/`e-wallet`/`wallet` — or the `PaymentMethod` enum.
 
+These four are *charge builders*, not SingaPay's payment-method catalogue. That catalogue is the ~20 codes from `paymentLinks()->paymentMethods()` used in `whitelisted_payment_method`; it is deliberately not an enum, being per-merchant and growing as SingaPay adds channels. Read it from the gateway rather than freezing it in code.
+
+Three things are deliberately absent from `pay()`: **cards** (use `card()->payment()` — kept out of the easy path because it puts your server in PCI-DSS scope), **retail outlets** (no endpoint of their own; go through `whitelisted_payment_method`), and **direct debit** (a bind-then-charge lifecycle, and not yet released).
+
 **Per-method fields:**
 
 | Field | payment_link | va | qris | ewallet |
@@ -261,6 +265,21 @@ Direct debit is **not** subject to the money-out guard even though its request i
 ## Money out
 
 > Everything below requires `SINGAPAY_MONEY_OUT=true`. Otherwise the SDK throws `MoneyOutDisabledException` before any traffic leaves.
+
+### Test account numbers: the prefix decides the outcome
+
+Sandbox does not use real accounts. A disbursement's outcome is decided by the **prefix** of the beneficiary account number; the rest is free digits, as long as the total length matches that bank's account length (BRI is 15, so `1000` plus 11 digits).
+
+| Prefix | Final outcome |
+|---|---|
+| `1000`, `1001`, `1002`, `1003` | SUCCESS |
+| `1004`, `1006`, `1007`, `4000` | FAILED |
+
+This rule appears only in the dashboard's *New Transaction* modal, nowhere in the API documentation. Verified 2026-08-21: `100000000000001` settled to `success` (code `00`), while `123456789012` — an arbitrary number with no prefix — **hangs on `Pending` indefinitely**. If your sandbox disbursements never settle, this is why.
+
+The outcome is not immediate: a transfer always starts `Pending` and resolves tens of seconds later. Never conclude anything from the first response — call `inquireStatus()`, exactly as production requires.
+
+`checkBeneficiary()` works with these numbers too, returning a deterministic fake holder name per number (`100000000000001` → "Yayasan Marbun Tbk"), so the confirm-the-name flow can be exercised end to end.
 
 ### The mandatory pattern: transfer → handle ambiguity → inquire
 

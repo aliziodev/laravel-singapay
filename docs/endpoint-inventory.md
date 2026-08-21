@@ -391,6 +391,27 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     accepted (SP009 for a reference that does not exist) — note its second
     argument is `scope` (`issuer`|`acquirer`), not an account id.
 
+39. **Sandbox disbursement outcomes are chosen by the account-number
+    prefix.** Only the dashboard's *New Transaction* modal documents it:
+    `1000`/`1001`/`1002`/`1003` settle SUCCESS, `1004`/`1006`/`1007`/`4000`
+    settle FAILED, and the remaining digits are free as long as the total
+    length matches the bank's. Verified 2026-08-21 — `100000000000001`
+    reached `success` (code `00`) while an arbitrary `123456789012` stayed
+    `Pending` indefinitely, which is what made the earlier disbursement look
+    stuck. Resolution is asynchronous: transfers always start `Pending` and
+    settle tens of seconds later, so `inquireStatus()` is mandatory in
+    sandbox exactly as in production. `checkBeneficiary()` accepts these
+    numbers and returns a deterministic fake holder name per number.
+
+40. **`PaymentMethod` is not SingaPay's payment-method catalogue.** The enum's
+    four cases are SDK charge builders; the catalogue is the ~20 codes from
+    `paymentLinks()->paymentMethods()` used in `whitelisted_payment_method`.
+    That list is per-merchant and grows as SingaPay adds channels, so it is
+    deliberately read from the gateway rather than frozen into an enum. Cards
+    stay out of `pay()` on purpose — the convenience API should not be the
+    thing that puts a server into PCI-DSS scope — as do retail outlets (no
+    endpoint of their own) and direct debit (bind-then-charge, unreleased).
+
 38. **Subscription proration, verified.** An upgrade on an `active` plan
     returns `upgrade.prorated_charge` with a `bill_id`, the difference, a
     `status` and a `payment_link_url`. While that charge is `pending` any

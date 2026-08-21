@@ -78,6 +78,10 @@ $charge->data('...');      // akses penuh ke response
 
 **Metode & alias** (case-insensitive): `payment_link`/`pl`/`link`, `virtual_account`/`va`, `qris`/`qr`, `ewallet`/`e-wallet`/`wallet` — atau enum `PaymentMethod`.
 
+Keempatnya adalah *builder charge*, bukan daftar metode pembayaran SingaPay. Daftar itu adalah ~20 kode dari `paymentLinks()->paymentMethods()` yang dipakai di `whitelisted_payment_method` — sengaja tidak dijadikan enum karena per-merchant dan berubah seiring SingaPay menambah channel. Baca dari gateway, jangan dibekukan di kode.
+
+Tiga hal sengaja tidak ada di `pay()`: **kartu** (pakai `card()->payment()` — dijauhkan dari API mudah ini karena membawa server Anda ke cakupan PCI-DSS), **gerai retail** (tidak punya endpoint sendiri, lewat `whitelisted_payment_method`), dan **direct debit** (siklusnya bind-lalu-charge, dan produknya belum dirilis).
+
 **Field per metode:**
 
 | Field | payment_link | va | qris | ewallet |
@@ -261,6 +265,21 @@ Direct debit **tidak** terkena guard money-out meski request-nya ditandatangani:
 ## Money out
 
 > Semua contoh di bawah butuh `SINGAPAY_MONEY_OUT=true`. Tanpa itu, SDK melempar `MoneyOutDisabledException` sebelum ada traffic keluar.
+
+### Nomor rekening tes: prefix menentukan hasilnya
+
+Sandbox tidak memakai rekening sungguhan. Hasil sebuah disbursement ditentukan oleh **prefix** nomor rekening tujuan — sisanya angka bebas, asal panjang totalnya sesuai panjang nomor rekening bank tersebut (BRI 15 digit, jadi `1000` + 11 angka).
+
+| Prefix | Hasil akhir |
+|---|---|
+| `1000`, `1001`, `1002`, `1003` | SUCCESS |
+| `1004`, `1006`, `1007`, `4000` | FAILED |
+
+Aturan ini hanya muncul di modal *New Transaction* pada dashboard, tidak di dokumentasi API mana pun. Diverifikasi 2026-08-21: `100000000000001` selesai `success` (code `00`), sementara `123456789012` — nomor asal yang tidak berprefix — **menggantung `Pending` selamanya**. Kalau disbursement sandbox Anda tidak pernah selesai, ini penyebabnya.
+
+Hasilnya tidak langsung: transfer selalu mulai `Pending` dan baru resolve beberapa puluh detik kemudian. Jangan simpulkan apa pun dari respons pertama — panggil `inquireStatus()`, persis seperti yang wajib dilakukan di produksi.
+
+`checkBeneficiary()` juga bekerja dengan nomor berprefix ini dan mengembalikan nama pemilik palsu yang deterministik per nomor (`100000000000001` → "Yayasan Marbun Tbk"), jadi alur konfirmasi-nama bisa diuji utuh.
 
 ### Pola wajib: transfer → tangani ambiguitas → inquiry
 

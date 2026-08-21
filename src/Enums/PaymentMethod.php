@@ -5,11 +5,30 @@ declare(strict_types=1);
 namespace Aliziodev\Singapay\Enums;
 
 use Aliziodev\Singapay\Charges\Charges;
+use Aliziodev\Singapay\Endpoints\Card;
 use Aliziodev\Singapay\Exceptions\ChargeException;
 
 /**
  * Money-in payment methods supported by the unified charge API
  * ({@see Charges}).
+ *
+ * These four are *SDK charge builders*, not SingaPay's catalogue of payment
+ * methods — do not confuse the two. The catalogue is the ~20 codes the
+ * gateway returns from `paymentLinks()->paymentMethods()`
+ * (`NICEPAY_CARD`, `EWALLET_DANA`, `ALFAMART`, `VA_BRI`, …), which belong in
+ * `whitelisted_payment_method` on a payment link. It is deliberately not
+ * modelled as an enum: it is per-merchant, changes as SingaPay adds
+ * channels, and freezing it in code would rot. Read it from the gateway.
+ *
+ * Three things are deliberately absent from `pay()`:
+ *
+ * - **Card.** Available as {@see Card::payment()}.
+ *   Keeping it out of the convenience API is a safety decision: `pay()` is
+ *   the easy path, and card puts your server in PCI-DSS scope.
+ * - **Retail outlet** (Alfamart/Indomaret). It has no endpoint of its own —
+ *   reach it through `whitelisted_payment_method` on a payment link.
+ * - **Direct debit**, which is a bind-then-charge lifecycle rather than a
+ *   one-shot charge, and which SingaPay has not released yet.
  */
 enum PaymentMethod: string
 {
