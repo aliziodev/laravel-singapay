@@ -10,10 +10,26 @@ use Aliziodev\Singapay\Http\Response;
 /**
  * Sub-account management.
  *
- * Account IDs are ULID strings. `account_type` may be `owned` or
- * `personal_managed` (active immediately) or `business_managed` (requires
- * KYB approval; save the returned `kyb_onboarding_url` — it becomes null
- * once KYB is verified).
+ * Each sub-account has its own balance, transactions and payment
+ * instruments; move funds between them with {@see AccountTransfer}.
+ *
+ * Account IDs are ULID strings. `account_type`, verified against the
+ * sandbox 2026-08-21:
+ *
+ * - `owned` — your own business unit. Created `active`, no KYB. Customers
+ *   see the *master* account's details at payment, and its webhook
+ *   configuration is inherited automatically.
+ * - `personal_managed` — also created `active` with no KYB.
+ * - `business_managed` — a third party you collect on behalf of. Created
+ *   **`inactive`** with `kyb_status: kyb_in_review` and a
+ *   `kyb_onboarding_url` for the sub-merchant to complete KYB. Save that
+ *   URL: it is revoked (null) once KYB is verified. Customers see the
+ *   *sub-account's* details, and it may carry its own webhook settings —
+ *   which is one reason a platform can receive deliveries signed by more
+ *   than one credential; see `webhooks.secrets` and connections.
+ *
+ * `partner` appears in the published `Account` schema enum but the create
+ * endpoint rejects it with HTTP 422, so do not offer it.
  */
 class Accounts extends Endpoint
 {

@@ -360,6 +360,40 @@ exist only as v1; there is no v2 of them.
     call — a typo in a whitelist would otherwise open payment methods the
     merchant meant to close.
 
+57. **Sub-account types, verified** (2026-08-21) — every value in the
+    published enum was created for real and then deleted:
+
+    | `account_type` | Result |
+    |---|---|
+    | `owned` | `active`, `kyb_status` null, no onboarding URL |
+    | `personal_managed` | `active`, no KYB either |
+    | `business_managed` | **`inactive`**, `kyb_status: kyb_in_review`, and a real `kyb_onboarding_url` on `sandbox-payment-b2b.singapay.id/kyb/{token}` |
+    | **`partner`** | **HTTP 422** — it is in the spec's `Account` schema enum but the create endpoint refuses it |
+    | anything else | HTTP 422 (the field is properly validated) |
+
+    So `business_managed` is the only type that cannot transact on
+    creation, and the KYB link is the whole point of it. The account
+    resource carries exactly eleven fields — `id`, `account_number`, `name`,
+    `status`, `account_type`, `kyb_status`, `business_type`, `legal_name`,
+    `brand_name`, `kyb_onboarding_url`, `invite_members` — identical from
+    `list()` and `find()`.
+
+58. **There is no API for a sub-account's webhook URLs.** SingaPay's
+    sub-account overview says a managed sub-account "can manage its own
+    webhook settings through the Dashboard, while the Master Account may
+    also configure them via API", but no such route is reachable: the
+    account resource carries no `callback_urls` field, and
+    `accounts/{id}/callback-urls`, `accounts/{id}/webhooks`,
+    `accounts/{id}/notif-url`, `accounts/{id}/settings`, `callback-urls`
+    and `credentials` all answer 404. Treat webhook configuration as
+    dashboard-only.
+
+    This is consistent with discrepancy 22: notifications follow the
+    *credential*, and an `owned` sub-account inherits the master's
+    configuration. A platform with `business_managed` sub-accounts, whose
+    webhook settings are their own, is exactly the case that needs several
+    verification secrets — see discrepancy 47.
+
 ## Identity host
 
 | Method | Path | SDK method |
