@@ -234,8 +234,18 @@ exist only as v1; there is no v2 of them.
     |---|---|---|
     | GoPay | **paid** | its `checkout_url` is a **public Midtrans sandbox simulator** (`simulator.sandbox.midtrans.com/v2/deeplink/detail`) — no vendor account needed, just open and confirm |
     | DANA | **paid** | the DANA sandbox cashier, account `0817345545` / PIN `123321` |
-    | OVO | **fails on its own** | twice, with no interaction at all — there is no URL to open, and no OVO sandbox handset registered to the phone number |
-    | ShopeePay | stays `open` | `app.uat.shopeepay.co.id` needs a ShopeePay UAT account (its root answers 404) |
+    | OVO | reaches `open`, then fails unconfirmed | fully provisioned — see below; completing it needs an OVO handset to accept the push |
+    | ShopeePay | stays `open` | its `checkout_url` does resolve to a real UAT checkout page (`uat.shopeepay.co.id/checkout/payment`), but curl gets 403 — bot protection rather than proof an account is required |
+
+    **OVO is not broken, and it validates the phone number upstream.** An
+    unregistered number is refused at creation with a bare **HTTP 400 and no
+    SP code**, carrying a customer-ready Indonesian message:
+    `Nomor HP tidak terdaftar di aplikasi OVO. Pastikan nomor HP yang
+    dimasukkan sudah terdaftar.` Surface that text to the customer — there
+    is no code to branch on. `0817345545` and `081234567890` are accepted and
+    create an `open` transaction awaiting the push; the earlier reading that
+    OVO "fails on its own" was wrong, it fails only because nothing ever
+    confirms the push.
 
     `payment_channel` is null at creation and filled in after payment:
     `GOPAY` for GoPay, and `BALANCE_` — with a trailing underscore — for

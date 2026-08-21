@@ -221,7 +221,11 @@ $order->data('checkout_url');
 | `EWALLET_GOPAY` | ada | ada (deeplink) | |
 | `EWALLET_SHOPEEPAY` | ada | ada (`shopeepayid://`) | |
 
-Di sandbox, sejauh mana tiap vendor bisa diselesaikan: **GoPay** dan **DANA** bisa dibayar sampai lunas (GoPay lewat simulator publik Midtrans, tanpa akun vendor). **OVO gagal sendiri** tanpa interaksi apa pun. **ShopeePay** butuh akun UAT ShopeePay. Dan ingat: **checkout yang gagal tidak memancarkan webhook** — jangan menunggu notifikasi kegagalan, panggil `inquireStatus()`.
+Di sandbox, sejauh mana tiap vendor bisa diselesaikan: **GoPay** dan **DANA** bisa dibayar sampai lunas (GoPay lewat simulator publik Midtrans, tanpa akun vendor). **OVO** membuat transaksi `open` yang menunggu push ke aplikasi — butuh ponsel dengan OVO sandbox untuk menyelesaikannya. **ShopeePay** mengarah ke halaman checkout UAT sungguhan.
+
+> ⚠️ **OVO memvalidasi nomor HP di sisi vendor.** Nomor yang tidak terdaftar ditolak saat pembuatan dengan **HTTP 400 tanpa kode SP**, membawa pesan siap-tampil: *"Nomor HP tidak terdaftar di aplikasi OVO. Pastikan nomor HP yang dimasukkan sudah terdaftar."* Tidak ada kode untuk dicabangkan — tampilkan pesannya langsung ke pelanggan.
+
+Dan ingat: **checkout yang gagal tidak memancarkan webhook** — jangan menunggu notifikasi kegagalan, panggil `inquireStatus()`.
 
 Jadi jangan pernah `redirect($order->data('checkout_url'))` tanpa memeriksa null — checkout OVO akan mengirim pelanggan ke mana-mana. Tampilkan instruksi "buka aplikasi OVO Anda" untuk vendor itu.
 

@@ -95,7 +95,7 @@ Delapan dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaP
 | `payment-link-transaction` | buka `payment_url`, bayar dengan kartu tes `4111111111111111` (kedaluwarsa `12/30` di UI, CVV `123`) |
 | `payment-link-inquiry` | terkirim otomatis sesaat sebelum pembayaran payment link, saat pelanggan memilih metode |
 | retail outlet (Alfamart/Indomaret) | payment link dengan `whitelisted_payment_method: ['ALFAMART']`, pilih metodenya, lalu bayar kodenya di simulator **Retail Outlet** dashboard |
-| `ewallet-native-transaction` | buka `checkout_url` dan selesaikan: **GoPay** paling mudah — URL-nya simulator publik Midtrans, tanpa akun vendor. DANA pakai akun sandbox `0817345545` / PIN `123321`. **Hanya sukses yang memancarkan webhook**; checkout gagal tidak mengirim apa pun |
+| `ewallet-native-transaction` | buka `checkout_url` dan selesaikan: **GoPay** paling mudah — URL-nya simulator publik Midtrans, tanpa akun vendor. DANA pakai akun sandbox `0817345545` / PIN `123321`. OVO tidak punya URL (push ke aplikasi). **Hanya sukses yang memancarkan webhook**; checkout gagal tidak mengirim apa pun |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
 | `transaction-expiration` | otomatis, batch terjadwal (~1 menit setelah jatuh tempo) |
 | `disbursement` | `disbursement()->transfer()` ke nomor rekening berawalan `1000`–`1003` (sukses) atau `1004`/`1006`/`1007`/`4000` (gagal) |

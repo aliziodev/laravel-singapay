@@ -221,7 +221,11 @@ $order->data('checkout_url');
 | `EWALLET_GOPAY` | present | present (deeplink) | |
 | `EWALLET_SHOPEEPAY` | present | present (`shopeepayid://`) | |
 
-How far each vendor goes in sandbox: **GoPay** and **DANA** can be paid to completion (GoPay through a public Midtrans simulator, no vendor account needed). **OVO fails by itself** with no interaction. **ShopeePay** needs a ShopeePay UAT account. And note: **a failed checkout emits no webhook** — never wait for a failure notification, call `inquireStatus()`.
+How far each vendor goes in sandbox: **GoPay** and **DANA** can be paid to completion (GoPay through a public Midtrans simulator, no vendor account needed). **OVO** creates an `open` transaction awaiting a push to the app — completing it needs an OVO sandbox handset. **ShopeePay** resolves to a genuine UAT checkout page.
+
+> ⚠️ **OVO validates the phone number on the vendor side.** An unregistered number is refused at creation with **HTTP 400 and no SP code**, carrying a customer-ready message: *"Nomor HP tidak terdaftar di aplikasi OVO. Pastikan nomor HP yang dimasukkan sudah terdaftar."* There is no code to branch on — show the message to the customer.
+
+And note: **a failed checkout emits no webhook** — never wait for a failure notification, call `inquireStatus()`.
 
 So never `redirect($order->data('checkout_url'))` without a null check — an OVO checkout would send the customer nowhere. Show an "open your OVO app" instruction for that vendor instead.
 
