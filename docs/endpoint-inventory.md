@@ -282,15 +282,28 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     subscription cycle, settlement, direct debit); pointing all eight at one
     route is correct.
 
-22. **Sandbox Simulator payments do not emit money-in webhooks.** Seven VA
-    payments, zero `va-transaction` deliveries, with the Money In Notif URL
-    set and signature verification proven working by a `transaction-expiration`
-    delivery that arrived at the same URL minutes earlier. Settled by the
-    dashboard's own **Callback Activity History**, which held exactly one row
-    — that expiration delivery — and no attempt at all for the VA payments.
-    SingaPay never tried. The account page's Notification Configuration
-    toggles are unrelated: enabling all of them changed nothing, and they sit
-    beside Notification Email.
+22. **Webhooks are scoped to the credential that owns the account.** An
+    earlier reading of this pass concluded that sandbox Simulator payments
+    emit no money-in webhooks; that was wrong, and this entry replaces it.
+    Notifications go to the Notif URL of the credential listed as owning the
+    account under *Assigned Accounts* — the webhook panel says as much
+    ("Applies to all accounts sharing this credential"). The seven earlier VA
+    payments were delivered all along, to the placeholder URL on the owning
+    credential, and the dashboard's Callback Activity History is scoped the
+    same way, which is why it looked empty.
+
+    Two things must match: the Notif URL on the owning credential, and the
+    app's `SINGAPAY_CLIENT_SECRET`, which must be that credential's — the
+    signature is computed with it. Verified 2026-08-21 by recomputing a real
+    `va-transaction` signature against four candidates (client secret and
+    HMAC key of two credentials); only the owning credential's client secret
+    matched.
+
+    Bonus, observed in passing: SingaPay **retries** a delivery answered with
+    401 at roughly one-minute intervals, and the SDK's claim-then-dispatch
+    ledger absorbed a genuine retry — one ledger row, listener fired exactly
+    once. The account page's Notification Configuration toggles are unrelated
+    to any of this; they sit beside Notification Email.
 
 23. **Amount `value` is inconsistently typed in responses.** The same
     statement row returns `2500` (integer) for a populated amount and

@@ -20,17 +20,20 @@ https://your-app.com/webhooks/singapay
 
 One route is enough: the controller identifies the type from the payload, never from the URL. Per the dashboard, direct-debit binding and unbinding always use the merchant-level Direct Debit URL rather than any per-account one.
 
-### Sandbox: Simulator payments may not fire a webhook
+### Webhooks follow the credential, not the merchant
 
-Tested 2026-08-21 with the Notif URLs correctly filled in and signature verification proven working: **seven** VA payments made through the dashboard Simulator produced no `va-transaction` delivery at all. In the same window a signed `transaction-expiration` delivery **did** arrive at the very same URL and verified cleanly.
+This is the likeliest reason your webhooks never arrive, and nothing surfaces it until you know to look.
 
-Confirmed from SingaPay's own side: the dashboard's **Callback Activity History held exactly one row** — that expiration delivery — and no attempt whatsoever for the VA payments. SingaPay was not failing to deliver; it never tried.
+The dashboard's **Credential Details** page carries an *Assigned Accounts* list, and its webhook panel states *"Applies to all accounts sharing this credential."* A transaction's notification therefore goes to the Notif URL of the **credential that owns the account** — not the credential you happen to call the API with, and not one merchant-wide setting.
 
-The account page also carries a **Notification Configuration** panel (VA Transaction Paid, Payment Link Paid, Disbursement Success, and so on) whose toggles all default to off. Turning every one of them on did **not** produce a money-in webhook. That panel sits on the same page as **Notification Email**, so it most likely governs email notifications rather than webhooks — but SingaPay has not confirmed this.
+Two things must line up, and both must be right at once:
 
-What this means for you: do not assume your integration is broken just because money-in webhooks never arrive in sandbox. Prove the receiving path first with a signed delivery you generate yourself (see [Testing your listeners](#testing-your-listeners)), then ask SingaPay whether money-in notifications are emitted for Simulator payments at all.
+1. **The URL** belongs on the credential that owns the account. Filling it in on any other credential changes nothing — SingaPay still delivers, just somewhere else, and you see no trace of it.
+2. **Your `SINGAPAY_CLIENT_SECRET` must belong to that same credential.** The webhook signature is computed with that credential's client secret; another credential's secret fails verification and answers 401.
 
-One toggle worth enabling either way: **Callback to Merchant Failed** — it is what tells you SingaPay could not reach your server.
+Verified 2026-08-21: a genuine `va-transaction` delivery had its signature recomputed against four candidates — the client secret and HMAC key of two different credentials — and only the **client secret of the credential owning the account** matched.
+
+SingaPay also **retries** a delivery answered with 401, roughly a minute later, so a misconfiguration caught quickly does not lose the notification.
 
 ### The signing key is the Client Secret
 

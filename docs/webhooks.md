@@ -20,17 +20,20 @@ https://app-anda.com/webhooks/singapay
 
 Satu route sudah cukup: controller mengenali tipe dari payload, bukan dari URL. Catatan dari dashboard: binding dan unbinding direct debit selalu memakai URL Direct Debit tingkat merchant, bukan URL per akun.
 
-### Sandbox: pembayaran dari Simulator belum tentu memicu webhook
+### Webhook mengikuti kredensial, bukan merchant
 
-Diuji pada 2026-08-21 dengan Notif URL terisi benar dan tanda tangan terbukti valid: **tujuh** pembayaran VA lewat Simulator dashboard tidak menghasilkan satu pun delivery `va-transaction`. Pada saat yang sama, delivery `transaction-expiration` yang bertanda tangan **berhasil** masuk ke URL yang persis sama dan lolos verifikasi.
+Ini penyebab paling mungkin kalau webhook Anda tidak pernah datang, dan tidak terlihat di mana pun sampai Anda tahu harus mencarinya.
 
-Dikonfirmasi dari sisi SingaPay sendiri: **Callback Activity History di dashboard hanya memuat satu baris** — delivery expiration itu — dan nol percobaan untuk pembayaran VA. Jadi SingaPay tidak gagal mengirim; ia memang tidak pernah mencoba.
+Halaman **Credential Details** di dashboard punya daftar *Assigned Accounts*, dan panel webhook-nya menyatakan *"Applies to all accounts sharing this credential."* Artinya notifikasi sebuah transaksi dikirim ke Notif URL milik **kredensial yang memiliki akun tersebut** — bukan ke kredensial yang Anda pakai memanggil API, dan bukan ke satu konfigurasi merchant-wide.
 
-Halaman akun juga punya panel **Notification Configuration** (VA Transaction Paid, Payment Link Paid, Disbursement Success, dan seterusnya) yang semua toggle-nya default mati. Menyalakan semuanya **tidak** membuat webhook money-in terkirim. Panel itu berada satu halaman dengan **Notification Email**, jadi kemungkinan besar yang diaturnya adalah notifikasi email, bukan webhook — tapi ini belum dikonfirmasi SingaPay.
+Konsekuensinya ada dua, dan keduanya harus benar bersamaan:
 
-Yang perlu Anda lakukan: jangan berasumsi integrasi Anda rusak hanya karena webhook money-in tidak datang di sandbox. Buktikan dulu jalur penerimaannya dengan delivery bertanda tangan yang Anda kirim sendiri (lihat [Menguji listener Anda](#menguji-listener-anda)), lalu tanyakan ke SingaPay apakah notifikasi money-in memang dikirim untuk pembayaran Simulator.
+1. **URL** harus diisi di kredensial yang memiliki akun itu. Mengisinya di kredensial lain tidak berpengaruh apa pun — SingaPay tetap mengirim, hanya ke tempat lain, dan Anda tidak akan melihat jejaknya.
+2. **`SINGAPAY_CLIENT_SECRET` aplikasi Anda harus milik kredensial yang sama.** Tanda tangan webhook dihitung dengan client secret kredensial itu; secret kredensial lain akan gagal verifikasi dan dijawab 401.
 
-Satu toggle yang layak dinyalakan apa pun jawabannya: **Callback to Merchant Failed** — itu yang memberi tahu Anda kalau SingaPay gagal menjangkau server Anda.
+Diverifikasi 2026-08-21: sebuah delivery `va-transaction` sungguhan dihitung ulang tanda tangannya dengan empat kandidat — client secret dan HMAC key dari dua kredensial berbeda — dan hanya **client secret milik kredensial yang memiliki akun** yang cocok.
+
+SingaPay juga **mengirim ulang** delivery yang dijawab 401, sekitar satu menit kemudian. Jadi salah konfigurasi tidak langsung kehilangan notifikasi, asal diperbaiki cepat.
 
 ### Kunci penanda tangan: Client Secret
 
