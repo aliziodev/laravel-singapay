@@ -97,7 +97,7 @@ Eight of the thirteen event types have been confirmed against genuine SingaPay p
 | retail outlet (Alfamart/Indomaret) | a payment link with `whitelisted_payment_method: ['ALFAMART']`, pick the method, then pay the code in the dashboard's **Retail Outlet** simulator |
 | `ewallet-native-transaction` | open `checkout_url` and complete it: **GoPay** is easiest — its URL is a public Midtrans simulator needing no vendor account. DANA uses sandbox account `0817345545` / PIN `123321`. OVO has no URL at all (it pushes to the app). **Only success delivers a webhook**; a failed checkout sends nothing |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
-| `transaction-expiration` | automatic, scheduled batch (~1 minute after the due time) |
+| `transaction-expiration` | automatic, scheduled batch — the lag varies (54 seconds and 3.5 minutes, measured). Sweeps payment links, VAs and QRIS only; **e-wallet is not included** |
 | `disbursement` | `disbursement()->transfer()` to an account number whose prefix selects the outcome — see the sandbox outcome table below |
 
 The rest cannot be provoked in sandbox: `settlement` (a scheduled batch), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live). **`product-expiration` appears never to fire at all**: payment links and VAs left well past `expired_at` never change state — expiry is computed at read time rather than written back — so there is no state change for a batch to report.

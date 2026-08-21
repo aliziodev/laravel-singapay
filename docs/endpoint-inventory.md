@@ -199,14 +199,22 @@ exist only as v1; there is no v2 of them.
     verbatim. The v2 payment link takes the ordinary date string (discrepancy
     29) — the two products genuinely disagree, so do not share a helper.
 
-50. **Gateway timestamps are WIB, and the expiry sweep runs about once a
-    minute.** A `transaction-expiration` delivery stamped
-    `21 Aug 2026 04:35:02` arrived at 21:35:03 UTC the day before, i.e. WIB
-    (UTC+7); it reported a QRIS that expired at `04:34:08`, so the batch
-    picked it up 54 seconds later. Payment links and virtual accounts,
-    however, were still `open`/`active` minutes past their own `expired_at`,
-    so the product sweep is on a different (slower) schedule than the
-    transaction sweep.
+50. **Gateway timestamps are WIB, and the expiry sweep lag varies.** A
+    `transaction-expiration` delivery stamped `21 Aug 2026 04:35:02` arrived
+    at 21:35:03 UTC the day before, i.e. WIB (UTC+7). Two samples put the
+    batch lag at **54 seconds and 3 minutes 33 seconds** (a QRIS expiring
+    23:26:30 was reported 23:30:03), so do not budget on a fixed interval —
+    it is a periodic sweep, not a per-transaction timer.
+
+    The delivery carries exactly three sections — `payment_link_histories`,
+    `virtual_account_transactions`, `qris_histories` — plus a `summary` with
+    a count for each. **E-wallet checkouts are not swept at all**, which
+    matches discrepancy 51: an e-wallet that is never completed produces no
+    notification of any kind, expiry included.
+
+    Payment links and virtual accounts as *products* are a different story
+    again: they never change state at all (discrepancy 54), so only their
+    *transactions* appear here.
 
 51. **E-wallet checkout returns a different artifact per vendor, and OVO
     returns none at all.** All four vendors answer with an identical *key

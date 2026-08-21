@@ -97,7 +97,7 @@ Delapan dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaP
 | retail outlet (Alfamart/Indomaret) | payment link dengan `whitelisted_payment_method: ['ALFAMART']`, pilih metodenya, lalu bayar kodenya di simulator **Retail Outlet** dashboard |
 | `ewallet-native-transaction` | buka `checkout_url` dan selesaikan: **GoPay** paling mudah — URL-nya simulator publik Midtrans, tanpa akun vendor. DANA pakai akun sandbox `0817345545` / PIN `123321`. OVO tidak punya URL (push ke aplikasi). **Hanya sukses yang memancarkan webhook**; checkout gagal tidak mengirim apa pun |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
-| `transaction-expiration` | otomatis, batch terjadwal (~1 menit setelah jatuh tempo) |
+| `transaction-expiration` | otomatis, batch terjadwal — jedanya bervariasi (terukur 54 detik dan 3,5 menit setelah jatuh tempo). Hanya menyapu payment link, VA, dan QRIS; **e-wallet tidak ikut** |
 | `disbursement` | `disbursement()->transfer()` ke nomor rekening berawalan `1000`–`1003` (sukses) atau `1004`/`1006`/`1007`/`4000` (gagal) |
 
 Sisanya belum bisa dipicu di sandbox: `settlement` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif). **`product-expiration` tampaknya tidak pernah menyala sama sekali**: payment link dan VA yang jauh lewat `expired_at` tidak pernah berubah status — kedaluwarsa dihitung saat dibaca, bukan ditulis balik — jadi tidak ada perubahan state yang bisa memicu batch.
