@@ -1,3 +1,28 @@
+## 2.0.0 (2026-08-21)
+
+* docs: confirm the identity host needs credentials of its own ([2413744](https://github.com/aliziodev/laravel-singapay/commit/2413744))
+* docs: correct the money-in webhook finding — they follow the credential ([042924c](https://github.com/aliziodev/laravel-singapay/commit/042924c))
+* docs: explain SP403 as a credential-ownership error ([3cc2962](https://github.com/aliziodev/laravel-singapay/commit/3cc2962))
+* docs: record how to trigger each webhook event in sandbox ([7386092](https://github.com/aliziodev/laravel-singapay/commit/7386092))
+* docs: record the sandbox disbursement prefix rule and what PaymentMethod is ([d3aad48](https://github.com/aliziodev/laravel-singapay/commit/d3aad48))
+* docs: record what the full sandbox sweep proved ([d95d281](https://github.com/aliziodev/laravel-singapay/commit/d95d281))
+* docs: verify the biller V2 surface and flag its third secret ([10cf613](https://github.com/aliziodev/laravel-singapay/commit/10cf613))
+* docs: warn that a successful KYC verify is not a name match ([9f31115](https://github.com/aliziodev/laravel-singapay/commit/9f31115))
+* fix: call check-beneficiary at the path that actually serves it ([b81c05c](https://github.com/aliziodev/laravel-singapay/commit/b81c05c))
+* fix: read the biller envelope instead of misreading it as v2 ([ce828c8](https://github.com/aliziodev/laravel-singapay/commit/ce828c8))
+* fix: read the identity (KYC) envelope instead of misreading it as flat ([1c3cd04](https://github.com/aliziodev/laravel-singapay/commit/1c3cd04))
+* fix: surface biller field errors, which have no dedicated key ([ffa7de6](https://github.com/aliziodev/laravel-singapay/commit/ffa7de6))
+* feat: allow the biller host its own credentials ([d3d7bb4](https://github.com/aliziodev/laravel-singapay/commit/d3d7bb4))
+* feat!: move payment links onto the v2 API ([bc5b773](https://github.com/aliziodev/laravel-singapay/commit/bc5b773))
+
+### BREAKING CHANGE
+
+* paymentLinks()->create() now requires payment_link_type,
+and the $accountId parameter is gone from find() and update() since the v2
+paths have no account segment. SingaPay::pay('payment_link', ...) maps onto
+v2 automatically: 'title' becomes 'description', 'redirect_url' becomes
+'success_redirect_url', and expires_at is sent as ISO 8601.
+
 ## <small>1.4.3 (2026-08-20)</small>
 
 * fix: reject a verify-signature endpoint that lost its leading slash ([ef3d296](https://github.com/aliziodev/laravel-singapay/commit/ef3d296))
