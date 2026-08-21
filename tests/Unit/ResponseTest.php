@@ -189,3 +189,35 @@ it('does not mistake a v2 envelope for a biller one', function (): void {
     expect($v2->successful())->toBeTrue()
         ->and($v2->code)->toBe(ResponseCode::Success);
 });
+
+it('reads the identity (KYC) envelope', function (): void {
+    // Verbatim from the KYC swagger's 200 example.
+    $response = Response::fromHttp(httpResponse(200, [
+        'code' => 'SUCCESS',
+        'data' => ['similarity' => 100, 'status' => 'found', 'suggestion' => 'pass'],
+        'message' => 'OK',
+        'pricing' => 'PAID',
+        'request_id' => 'TXN-20260727-001',
+    ]));
+
+    expect($response->successful())->toBeTrue()
+        ->and($response->message)->toBe('OK')
+        // Without the dedicated branch this reads null: `data` would be the
+        // whole envelope rather than its data section.
+        ->and($response->data('similarity'))->toBe(100)
+        ->and($response->data('suggestion'))->toBe('pass')
+        ->and($response->data('request_id'))->toBeNull()
+        ->and($response->raw['pricing'])->toBe('PAID');
+});
+
+it('treats every non-SUCCESS identity code as a failure', function (string $code): void {
+    $response = Response::fromHttp(httpResponse(402, [
+        'code' => $code,
+        'message' => 'insufficient balance',
+        'pricing' => 'FREE',
+        'request_id' => 'TXN-1',
+    ]));
+
+    expect($response->successful())->toBeFalse()
+        ->and($response->message)->toBe('insufficient balance');
+})->with(['CLIENT_ERROR', 'UNAUTHORIZED', 'DUPLICATE_REFERENCE', 'INSUFFICIENT_BALANCE', 'SERVER_ERROR', 'INTERNAL_ERROR']);

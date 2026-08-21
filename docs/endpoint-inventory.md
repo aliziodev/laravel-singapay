@@ -418,6 +418,25 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     further update is refused with `409 Plan cannot be updated in its current
     state`. `payment_type` stays `null` even after the card is linked.
 
+42. **The identity (KYC) service uses a fifth envelope shape**, and the SDK
+    was misreading it. Responses are
+    `{"code": "SUCCESS", "data": {...}, "message": "OK", "request_id": "...",
+    "pricing": "PAID"}` — no `success`, no `response_code`, no `command` — so
+    they fell through to the flat branch, where `data` became the whole
+    envelope and every `data('similarity')` style read quietly returned null.
+    Detected now by `code` + `request_id`; `SUCCESS` is the only success
+    code, against CLIENT_ERROR, UNAUTHORIZED, DUPLICATE_REFERENCE,
+    INSUFFICIENT_BALANCE, SERVER_ERROR and INTERNAL_ERROR.
+
+    From the same spec, and now in the endpoint docblock: verification is
+    idempotent on `request_id` and billed once (bank re-runs after an
+    upstream FAILED); every response carries `pricing` (PAID/FREE); the rate
+    limit is 60 rps with `429` + `Retry-After`; a credential can hold its own
+    IP allowlist rejecting others with `403 IP_NOT_ALLOWED`; and all auth
+    failures return `401` regardless of cause so client-id existence does not
+    leak. Credentials come from a separate **merchant KYC dashboard** and
+    look like `kc_live_a3f2c4`.
+
 41. **The identity host really does need its own credential pair.** Not an
     assumption — tested 2026-08-21 with three combinations of the payment
     credentials (client_id + client_secret, API key as client_id, client_id +

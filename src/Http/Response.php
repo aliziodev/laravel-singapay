@@ -23,6 +23,9 @@ use Illuminate\Support\Collection;
  *   "data": {...}}` — note it reuses the key `response_code` for a two-digit
  *   code that is *not* an SP code, and carries the message under
  *   `response_text`.
+ * - identity (KYC): `{"code": "SUCCESS", "data": {...}, "message": "OK",
+ *   "request_id": "...", "pricing": "PAID"}` — a word code rather than a
+ *   numeric one, plus the billing outcome for that call.
  * - flat: token exchanges and some auxiliary services return the payload
  *   directly with no envelope.
  *
@@ -38,6 +41,13 @@ final readonly class Response implements Arrayable
      * "04" is a format rejection, "99" a general failure.
      */
     private const BILLER_SUCCESS = '00';
+
+    /**
+     * The identity (KYC) envelope's success code. Failures use
+     * CLIENT_ERROR, UNAUTHORIZED, DUPLICATE_REFERENCE,
+     * INSUFFICIENT_BALANCE, SERVER_ERROR or INTERNAL_ERROR.
+     */
+    private const IDENTITY_SUCCESS = 'SUCCESS';
 
     /**
      * @param  int  $status  HTTP status code.
@@ -73,6 +83,21 @@ final readonly class Response implements Arrayable
                 status: $response->status(),
                 code: null,
                 message: (string) ($raw['response_text'] ?? ''),
+                data: is_array($data) ? $data : [],
+                raw: $raw,
+            );
+        }
+
+        // Identity (KYC) envelope. Without this it falls through to the flat
+        // branch, where `data` would be the whole envelope and every
+        // `data('similarity')` style read would quietly return null.
+        if (self::isIdentityEnvelope($raw)) {
+            $data = $raw['data'] ?? [];
+
+            return new self(
+                status: $response->status(),
+                code: null,
+                message: (string) ($raw['message'] ?? ''),
                 data: is_array($data) ? $data : [],
                 raw: $raw,
             );
@@ -129,6 +154,10 @@ final readonly class Response implements Arrayable
             return (string) $this->raw['response_code'] === self::BILLER_SUCCESS;
         }
 
+        if (self::isIdentityEnvelope($this->raw)) {
+            return (string) $this->raw['code'] === self::IDENTITY_SUCCESS;
+        }
+
         // An envelope that carries a response_code is only successful on
         // SP000 — an unknown code is conservatively treated as a failure.
         if (array_key_exists('response_code', $this->raw)) {
@@ -159,6 +188,20 @@ final readonly class Response implements Arrayable
     private static function isBillerEnvelope(array $raw): bool
     {
         return array_key_exists('command', $raw) && array_key_exists('response_code', $raw);
+    }
+
+    /**
+     * Whether the payload is an identity (KYC) envelope.
+     *
+     * `request_id` alongside a top-level `code` is what distinguishes it: the
+     * v1 envelope nests its code under `error.code`, and neither the v2 nor
+     * the biller envelope carries a request id.
+     *
+     * @param  array<array-key, mixed>  $raw
+     */
+    private static function isIdentityEnvelope(array $raw): bool
+    {
+        return array_key_exists('code', $raw) && array_key_exists('request_id', $raw);
     }
 
     /**

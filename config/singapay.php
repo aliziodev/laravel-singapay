@@ -77,7 +77,10 @@ return [
     | Identity verification (KYC) credentials
     |--------------------------------------------------------------------------
     | The KYC service uses its OWN credential pair and signature scheme —
-    | never reuse the payment credentials here.
+    | never reuse the payment credentials here; they are rejected with
+    | "401 invalid credential or signature" (verified against sandbox).
+    | These are issued from the separate merchant KYC dashboard, and the
+    | client id looks like `kc_live_a3f2c4` rather than a UUID.
     */
     'identity' => [
         'client_id' => env('SINGAPAY_IDENTITY_CLIENT_ID'),
