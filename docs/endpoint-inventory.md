@@ -140,6 +140,21 @@ are exposed only under explicit `legacy*` names — v2 is the default for prepai
 and postpaid. `check-balance`, `list-bill-transaction` and `reset-customer-id`
 exist only as v1; there is no v2 of them.
 
+44. **PPOB payments need a third secret.** Every `*Payment()` call carries a
+    `password` in its `data` — the *merchant credential password*, distinct
+    from the client secret used to obtain the token. It is deliberately not
+    read from config: passing it at the call site keeps a stray code path
+    from spending real money, the same reasoning as the money-out guard.
+
+45. **All 13 biller paths verified against `biller-b2b.singapay.id/docs`**
+    (2026-08-21) — command enums, required fields, the conditional `period`
+    for bpjsks/bputk/putk, and `reference_number` sourcing all match the SDK.
+    Notes worth keeping: `pulsa`, `data` and `vouchg` are paid directly with
+    no inquiry (there `customer_id` is the phone number), while `plntok` and
+    `topupg` require one; `period` is sent as an integer but echoed back as a
+    string; and on postpaid inquiry `price` is the total payable
+    (amount + late fee + admin fee), so bill `price`, never `amount`.
+
 ## Identity host
 
 | Method | Path | SDK method |

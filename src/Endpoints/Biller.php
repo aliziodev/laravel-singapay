@@ -12,10 +12,22 @@ use Aliziodev\Singapay\Http\Response;
  * Biller (PPOB) services — a separate host with a command-style API.
  *
  * Every call is a POST whose body carries a `command` plus a `data` object.
- * The response envelope also differs: `response_code` is `"00"` (success) or
- * `"99"` (system error) with a `response_text`. Product categories include
- * PLN tokens, mobile credit, data packages, game top-ups, utilities, and
- * government/social insurance.
+ * The response envelope also differs: `response_code` carries a short numeric
+ * status alongside `response_text` — `"00"` success, `"04"` rejected format,
+ * `"99"` system error, and `"6"` transaction-not-found (note it is not
+ * zero-padded). Product categories include PLN tokens, mobile credit, data
+ * packages, game top-ups, utilities, and government/social insurance.
+ *
+ * ⚠️ **Payments need a third secret.** Every `*Payment()` call takes a
+ * `password` in its `data` — the *merchant credential password*, distinct
+ * from the client secret used to obtain the token. The SDK deliberately does
+ * not read it from config: passing it explicitly at the call site keeps a
+ * stray code path from spending real money, the same reasoning behind the
+ * money-out guard.
+ *
+ * The biller also mixes response envelopes — a `401` comes back in the v1
+ * shape (`{status, success, error}`) with no `command` at all. {@see Response}
+ * handles both.
  */
 class Biller extends Endpoint
 {
@@ -92,9 +104,16 @@ class Biller extends Endpoint
      *
      * `POST {biller}/api/v2/prepaid/payment`
      *
+     * `pulsa`, `data` and `vouchg` are paid directly, with no inquiry first —
+     * for those `customer_id` is simply the phone number. `plntok` and
+     * `topupg` must be inquired first and carry that inquiry's
+     * `reference_number`.
+     *
      * @param  string  $command  `pulsa`, `data`, `plntok`, `topupg`, or `vouchg`.
-     * @param  array<string, mixed>  $data  `product_code`, `password`, `customer_id`;
-     *                                      `reference_number` (required for plntok/topupg, from the inquiry).
+     * @param  array<string, mixed>  $data  `product_code`, `password` (the
+     *                                      merchant credential password, not the client secret),
+     *                                      `customer_id`; `reference_number` (required for plntok/topupg, from the
+     *                                      inquiry).
      */
     public function prepaidPayment(string $command, array $data): Response
     {
@@ -108,7 +127,12 @@ class Biller extends Endpoint
      *
      * @param  string  $command  `pdam`, `plnpos`, `plnnon`, `intv`, `bpjsks`, `bputk`, `putk`, or `mobpos`.
      * @param  array<string, mixed>  $data  `customer_id`, `product_code`;
-     *                                      `period` (required for bpjsks/bputk/putk), `phone_number`.
+     *                                      `period` (required for bpjsks 1–12, bputk 1/2/3/6/12, putk — send it as
+     *                                      an **integer**, though the response echoes it back as a string),
+     *                                      `phone_number` (max 25).
+     *                                      The reply carries `amount`, `late_fee` and `price`, where `price` is the
+     *                                      total actually payable (amount + late fee + admin fee) — bill that, not
+     *                                      `amount`.
      */
     public function postpaidInquiry(string $command, array $data): Response
     {
