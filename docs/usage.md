@@ -221,6 +221,8 @@ $order->data('checkout_url');
 | `EWALLET_GOPAY` | ada | ada (deeplink) | |
 | `EWALLET_SHOPEEPAY` | ada | ada (`shopeepayid://`) | |
 
+Di sandbox, sejauh mana tiap vendor bisa diselesaikan: **GoPay** dan **DANA** bisa dibayar sampai lunas (GoPay lewat simulator publik Midtrans, tanpa akun vendor). **OVO gagal sendiri** tanpa interaksi apa pun. **ShopeePay** butuh akun UAT ShopeePay. Dan ingat: **checkout yang gagal tidak memancarkan webhook** — jangan menunggu notifikasi kegagalan, panggil `inquireStatus()`.
+
 Jadi jangan pernah `redirect($order->data('checkout_url'))` tanpa memeriksa null — checkout OVO akan mengirim pelanggan ke mana-mana. Tampilkan instruksi "buka aplikasi OVO Anda" untuk vendor itu.
 
 ## Pembayaran berulang, kartu, dan direct debit

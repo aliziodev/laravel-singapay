@@ -224,8 +224,28 @@ exist only as v1; there is no v2 of them.
     `customer_phone` — which OVO alone *requires* (omitting it is HTTP 422,
     while DANA accepts the call without it). So `checkoutUrl()` is null for
     OVO by design, and any consumer that redirects without a null check
-    sends the customer nowhere. `payment_channel` is null at creation for
-    every vendor.
+    sends the customer nowhere.
+
+    **How far each vendor can actually be taken in sandbox** (all four
+    attempted 2026-08-21, distinct amounts so the outcomes cannot be
+    confused):
+
+    | Vendor | Outcome | How |
+    |---|---|---|
+    | GoPay | **paid** | its `checkout_url` is a **public Midtrans sandbox simulator** (`simulator.sandbox.midtrans.com/v2/deeplink/detail`) — no vendor account needed, just open and confirm |
+    | DANA | **paid** | the DANA sandbox cashier, account `0817345545` / PIN `123321` |
+    | OVO | **fails on its own** | twice, with no interaction at all — there is no URL to open, and no OVO sandbox handset registered to the phone number |
+    | ShopeePay | stays `open` | `app.uat.shopeepay.co.id` needs a ShopeePay UAT account (its root answers 404) |
+
+    `payment_channel` is null at creation and filled in after payment:
+    `GOPAY` for GoPay, and `BALANCE_` — with a trailing underscore — for
+    DANA. Do not match on it exactly.
+
+    **A failed e-wallet checkout emits no webhook at all.** The OVO failures
+    produced zero deliveries (ledger and rejection log both empty for them),
+    while both successes delivered `ewallet-native-transaction` within
+    seconds. So never wait on a webhook to learn that an e-wallet payment
+    failed — poll `inquireStatus()` or act on expiry.
 
 52. **Post-refactor live sweep** (2026-08-21, after connections landed).
     Nineteen endpoint groups re-exercised against the sandbox with the new

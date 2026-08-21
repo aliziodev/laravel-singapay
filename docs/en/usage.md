@@ -221,6 +221,8 @@ $order->data('checkout_url');
 | `EWALLET_GOPAY` | present | present (deeplink) | |
 | `EWALLET_SHOPEEPAY` | present | present (`shopeepayid://`) | |
 
+How far each vendor goes in sandbox: **GoPay** and **DANA** can be paid to completion (GoPay through a public Midtrans simulator, no vendor account needed). **OVO fails by itself** with no interaction. **ShopeePay** needs a ShopeePay UAT account. And note: **a failed checkout emits no webhook** — never wait for a failure notification, call `inquireStatus()`.
+
 So never `redirect($order->data('checkout_url'))` without a null check — an OVO checkout would send the customer nowhere. Show an "open your OVO app" instruction for that vendor instead.
 
 ## Recurring payments, cards, and direct debit
