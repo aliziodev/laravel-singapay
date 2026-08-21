@@ -418,6 +418,16 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     further update is refused with `409 Plan cannot be updated in its current
     state`. `payment_type` stays `null` even after the card is linked.
 
+43. **KYC `code: SUCCESS` does not mean the name matched.** The e-wallet
+    verify endpoint answers `SUCCESS` whenever the lookup *ran*, including
+    when there is no account for the number — and bills `PAID` for it either
+    way. The real outcome is in `data.status` (`found with kyc` /
+    `found without kyc` / `not found`) and `data.suggestion`
+    (`pass`/`review`/`reject`). `found without kyc` returns `similarity: 0`,
+    which means "no name to compare", not "names differ". `message` is
+    always the literal `OK`. Anyone treating `successful()` as "safe to pay
+    this person" would pay out to unverified accounts.
+
 42. **The identity (KYC) service uses a fifth envelope shape**, and the SDK
     was misreading it. Responses are
     `{"code": "SUCCESS", "data": {...}, "message": "OK", "request_id": "...",
