@@ -94,16 +94,44 @@ Eight of the thirteen event types have been confirmed against genuine SingaPay p
 | `qris-acquirer-transaction` | Simulator → QRIS & E-Wallet, paste the `qr_data` string |
 | `payment-link-transaction` | open `payment_url`, pay with test card `4111111111111111` (expiry `12/30` in the UI, CVV `123`) |
 | `payment-link-inquiry` | sent automatically a second before the payment link is paid, when the customer picks a method |
+| retail outlet (Alfamart/Indomaret) | a payment link with `whitelisted_payment_method: ['ALFAMART']`, pick the method, then pay the code in the dashboard's **Retail Outlet** simulator |
 | `ewallet-native-transaction` | open `checkout_url`, complete it in the DANA sandbox |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
 | `transaction-expiration` | automatic, scheduled batch (~1 minute after the due time) |
 | `disbursement` | `disbursement()->transfer()` to an account number whose prefix selects the outcome — see the sandbox outcome table below |
 
-The rest cannot be provoked in sandbox: `settlement` and `product-expiration` (scheduled batches), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live).
+The rest cannot be provoked in sandbox: `settlement` (a scheduled batch), `subscription-cycle` (waits for a billing cycle), `qris-issuer` and `direct-debit` (products not live). **`product-expiration` appears never to fire at all**: payment links and VAs left well past `expired_at` never change state — expiry is computed at read time rather than written back — so there is no state change for a batch to report.
 
 **DANA sandbox account.** E-wallet checkout needs a number registered in DANA's sandbox; your own number is rejected. The working test account is **0817345545** with PIN **123321**, documented by [Faspay](https://docs.faspay.co.id/before-live/account-testing) — Indonesian PSPs share the same DANA sandbox environment. SingaPay does not publish it. Do not guess the PIN: test accounts lock after a few attempts.
 
 **Money-in and money-out payloads differ in shape.** Money-in events arrive in the v1 envelope (`{"status":200,"success":true,"event":...}`), while `ewallet-topup` arrives in the v2 envelope (`{"response_code":"SP000","response_message":...,"event":...}`). The SDK normalises both, but never assume one shape if you read `$event->payload` directly.
+
+### The paid webhook does not tell you how it was paid
+
+Verified with a real Alfamart payment (2026-08-21): the `payment-link-transaction` delivery reports `data.payment.method` as the literal **`payment_link`**, however the customer actually paid. Nothing in that payload mentions retail, card or VA.
+
+The method is announced only in the earlier `payment-link-inquiry` delivery, and the two are joined on an identical `reff_no`:
+
+```php
+// When the customer picks a method:
+public function handle(PaymentLinkInquiryReceived $event): void
+{
+    $event->retailCode();           // "ALFAMART" | "INDOMARET" | null
+    $event->paymentMethodName();    // "Alfamart (Linkqu)" — display label
+    $event->paymentMethodValue();   // the retail payment code
+    $event->historyReffNo();        // the join key
+}
+
+// When it is paid — match against what you stored above:
+public function handle(PaymentLinkPaid $event): void
+{
+    $event->reffNo();               // identical to historyReffNo()
+}
+```
+
+So recording "paid at Alfamart" **requires** listening to the inquiry event; the paid event alone can never tell you.
+
+One more trap: `payment_method_additional` arrives as a **JSON string**, not an object, so `data('payment_link_history.payment_method_additional.retail_code')` quietly returns null. Use `paymentMethodAdditional()`, which decodes it.
 
 ## Event catalogue
 

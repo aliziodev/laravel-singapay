@@ -118,6 +118,8 @@ Unmappable input (unknown method, missing required field, float `amount`) throws
 
 `create()`, `find()` and `update()` use the **v2** API — the gateway spec labels their v1 counterparts "Legacy". `list()`, `delete()` and `paymentMethods()` stay on v1, which is the only version that has them.
 
+> ⚠️ **Never judge a payment link by `status`.** That field holds the *stored* status and stays `"open"` forever, long past `expired_at`. The authoritative pair is `status_computed` (`expired`) and `is_expired` (`true`), both computed at read time. Verified 2026-08-21 on a link an hour past due: `status: "open"`, `status_computed: "expired"`.
+
 ```php
 // "total" shape: send the amount, no items needed at all.
 $response = SingaPay::paymentLinks()->create([
@@ -154,6 +156,8 @@ SingaPay::paymentLinks()->create([
 
 The gateway normalises the codes you send, so never compare the result verbatim: `ALFAMART` comes back as `RETAIL_ALFAMART_LINKQU`.
 
+> ⚠️ Retail payments are fully verified (2026-08-21), with a catch: **the paid webhook never mentions retail** — `data.payment.method` is always `payment_link`. To know the customer paid at Alfamart or Indomaret, capture it from the `payment-link-inquiry` event and join on `reff_no`. See [webhooks.md](webhooks.md).
+
 The authoritative list comes from the gateway, not from this page — `SingaPay::paymentLinks()->paymentMethods()` returns `payment_methods` (each with `code`, `name`, `group`, `desc`) plus `available_codes`. As of sandbox 2026-08-21 there are 20 codes in five groups:
 
 | Group | Codes |
@@ -180,6 +184,8 @@ $va = SingaPay::virtualAccounts()->create([
 $va->data('number');   // the VA number customers pay to
 $va->data('id');       // the VA ULID — used for find/update/delete
 ```
+
+> ⚠️ **A VA's `status` never turns expired.** Verified 2026-08-21: a `temporary` VA an hour past its `expired_at` still reported `status: "active"` — and the VA endpoints carry **no** `status_computed` or `is_expired` the way payment links do. Compare `expired_at` (Unix **milliseconds**, not seconds) against your own clock; do not trust `status`.
 
 ### QRIS
 

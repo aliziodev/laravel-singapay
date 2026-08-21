@@ -94,16 +94,44 @@ Delapan dari tiga belas tipe event sudah dikonfirmasi dengan payload asli SingaP
 | `qris-acquirer-transaction` | Simulator → QRIS & E-Wallet, tempel string `qr_data` |
 | `payment-link-transaction` | buka `payment_url`, bayar dengan kartu tes `4111111111111111` (kedaluwarsa `12/30` di UI, CVV `123`) |
 | `payment-link-inquiry` | terkirim otomatis sesaat sebelum pembayaran payment link, saat pelanggan memilih metode |
+| retail outlet (Alfamart/Indomaret) | payment link dengan `whitelisted_payment_method: ['ALFAMART']`, pilih metodenya, lalu bayar kodenya di simulator **Retail Outlet** dashboard |
 | `ewallet-native-transaction` | buka `checkout_url`, selesaikan di DANA sandbox |
 | `ewallet-topup` | `ewalletMoneyOut()->triggerTopup()` |
 | `transaction-expiration` | otomatis, batch terjadwal (~1 menit setelah jatuh tempo) |
 | `disbursement` | `disbursement()->transfer()` ke nomor rekening berawalan `1000`–`1003` (sukses) atau `1004`/`1006`/`1007`/`4000` (gagal) |
 
-Sisanya belum bisa dipicu di sandbox: `settlement` dan `product-expiration` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif).
+Sisanya belum bisa dipicu di sandbox: `settlement` (batch terjadwal), `subscription-cycle` (menunggu siklus tagihan), `qris-issuer` dan `direct-debit` (produknya belum aktif). **`product-expiration` tampaknya tidak pernah menyala sama sekali**: payment link dan VA yang jauh lewat `expired_at` tidak pernah berubah status — kedaluwarsa dihitung saat dibaca, bukan ditulis balik — jadi tidak ada perubahan state yang bisa memicu batch.
 
 **Akun DANA sandbox.** Checkout e-wallet butuh nomor yang terdaftar di sandbox DANA; nomor asli Anda akan ditolak. Nomor uji yang bekerja adalah **0817345545** dengan PIN **123321** — didokumentasikan oleh [Faspay](https://docs.faspay.co.id/before-live/account-testing), karena PSP Indonesia berbagi environment sandbox DANA yang sama. SingaPay tidak mendokumentasikannya sendiri. Jangan menebak PIN: akun uji punya batas percobaan.
 
 **Bentuk payload berbeda antara money-in dan money-out.** Event money-in datang dengan envelope v1 (`{"status":200,"success":true,"event":...}`), sementara `ewallet-topup` datang dengan envelope v2 (`{"response_code":"SP000","response_message":...,"event":...}`). SDK menormalkan keduanya, tapi kalau Anda membaca `$event->payload` mentah, jangan berasumsi satu bentuk.
+
+### Webhook pembayaran tidak memberi tahu metode yang dipakai
+
+Diverifikasi dengan pembayaran Alfamart sungguhan (2026-08-21): delivery `payment-link-transaction` melaporkan `data.payment.method` sebagai literal **`payment_link`**, apa pun cara pelanggan membayar. Tidak ada jejak retail, kartu, atau VA di mana pun dalam payload itu.
+
+Metodenya hanya diumumkan di delivery `payment-link-inquiry` yang datang lebih dulu, dan keduanya dijodohkan lewat `reff_no` yang identik:
+
+```php
+// Saat pelanggan memilih metode:
+public function handle(PaymentLinkInquiryReceived $event): void
+{
+    $event->retailCode();           // "ALFAMART" | "INDOMARET" | null
+    $event->paymentMethodName();    // "Alfamart (Linkqu)" — label tampilan
+    $event->paymentMethodValue();   // kode bayar retail
+    $event->historyReffNo();        // kunci join
+}
+
+// Saat dibayar — cocokkan dengan yang tersimpan di atas:
+public function handle(PaymentLinkPaid $event): void
+{
+    $event->reffNo();               // sama persis dengan historyReffNo()
+}
+```
+
+Jadi kalau Anda perlu mencatat "dibayar di Alfamart", Anda **wajib** mendengarkan event inquiry — event pembayaran saja tidak akan pernah bisa memberitahunya.
+
+Satu jebakan lagi: `payment_method_additional` dikirim sebagai **string JSON**, bukan objek, sehingga `data('payment_link_history.payment_method_additional.retail_code')` diam-diam mengembalikan null. Pakai `paymentMethodAdditional()` yang sudah men-decode-nya.
 
 ## Daftar event
 

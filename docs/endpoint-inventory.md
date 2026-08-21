@@ -238,6 +238,61 @@ exist only as v1; there is no v2 of them.
     `payment_methods` and `available_codes`, of twenty entries each; count
     the entries, not the top-level keys.
 
+53. **Retail outlet, verified end to end** (2026-08-21) — and the paid
+    webhook does not say it was retail. A payment link whitelisted to
+    `ALFAMART` produced a code the dashboard's Retail Outlet simulator
+    accepted, and the resulting `payment-link-transaction` reported
+    `data.payment.method` as the literal **`payment_link`**, with nothing
+    about the channel anywhere in the payload.
+
+    The channel is announced only in the earlier `payment-link-inquiry`
+    delivery, under `data.payment_link_history`:
+    `payment_method_name: "Alfamart (Linkqu)"`,
+    `payment_method_value` = the retail payment code, and
+    `payment_method_additional` = `{"retail_code":"ALFAMART","partner_reff":...}`.
+
+    Two traps there. `payment_method_additional` is a **JSON-encoded
+    string**, not an object, so dot access silently returns null — hence
+    `PaymentLinkInquiryReceived::paymentMethodAdditional()` and
+    `retailCode()`. And `payment_method_value` is only meaningful for
+    methods that have a code: a card inquiry just echoes the history
+    `reff_no` back into it.
+
+    The join is `payment_link_history.reff_no` (inquiry) ==
+    `transaction.reff_no` (paid) — identical strings in the captured pair.
+    Recording "paid at Alfamart" therefore *requires* listening to the
+    inquiry event; the paid event alone cannot tell you.
+
+    **Both outlets paid end to end**, each through a link whitelisted to it
+    alone: Alfamart code `211744000000012` (`Alfamart (Linkqu)`) and
+    Indomaret code `111741000000012` (`Indomaret (Linkqu)`). The codes carry
+    an outlet-specific prefix — `2117` vs `1117` — but treat that as
+    observation, not contract; read `retail_code`. `partner_reff` is a
+    concatenation of the WIB timestamp and the zero-padded payment-link id
+    (`20260821223309` + `002303` for link 2303), which makes it a usable
+    secondary correlation key.
+
+    Also visible in the inquiry payload: SingaPay's own margin, broken out
+    as `vendor_fee: 1800` + `our_margin: 1200` = `merchant_fee: 3000`, with
+    `net_amount: 24000` on a 27,000 charge. And the amount typing splits
+    across the pair — the inquiry reports `27000` (integer), the paid
+    delivery `"27000.00"` (string), one more case for discrepancy 23.
+
+54. **Expiry is computed at read time and never written back — and the two
+    products disagree about whether you can see it.** A payment link an hour
+    past `expired_at` still reports `status: "open"`, while
+    `status_computed` is `"expired"` and `is_expired` is `true`. A
+    `temporary` virtual account past its own `expired_at` still reports
+    `status: "active"`, and the VA endpoints carry **no** `status_computed`
+    or `is_expired` at all (identical key sets from `list()` and `find()`),
+    so the only way to know is to compare `expired_at` — Unix
+    *milliseconds* — against your own clock.
+
+    Anyone gating on `status` will treat long-dead links and VAs as live.
+    This also explains the silence around `product-expiration`: neither
+    product ever changes state, so there is no batch to fire it, which is
+    why baits left well past their expiry provoked nothing.
+
 ## Identity host
 
 | Method | Path | SDK method |
@@ -361,7 +416,9 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     `offline-store`, `retail-transactions`, `convenience-store`, under both
     v1.0 and v2.0). Retail is reachable only as a
     `whitelisted_payment_method` on a payment link; the gateway echoes the
-    code back normalised (`ALFAMART` → `RETAIL_ALFAMART_LINKQU`).
+    code back normalised (`ALFAMART` → `RETAIL_ALFAMART_LINKQU`). Paid end
+    to end on 2026-08-21 — see discrepancy 53 for what the webhooks do and
+    do not tell you about it.
 7. **Token endpoint version**: docs use v1.1, the OpenAPI spec still
    references v1.0. Configurable via `auth_version` (default 1.1).
 8. **Payment-link webhook has no `event` field** in its documented example,

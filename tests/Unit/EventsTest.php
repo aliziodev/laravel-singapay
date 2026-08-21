@@ -144,3 +144,88 @@ it('resolves money-out statuses on every family member', function (): void {
         ->and($qris->isSuccessful())->toBeFalse()
         ->and($qris->transactionStatus()?->isTerminal())->toBeTrue();
 });
+
+it('surfaces the retail outlet a payment link was paid at', function (array $case): void {
+    // Verbatim from the real deliveries captured 2026-08-21 — one per outlet.
+    // Note payment_method_additional arrives as a JSON *string*.
+    $inquiry = new Events\PaymentLinkInquiryReceived([
+        'event' => 'payment-link-inquiry',
+        'data' => [
+            'payment_link_history' => [
+                'reff_no' => $case['reff'],
+                'status' => 'pending',
+                'payment_method_name' => $case['name'],
+                'payment_method_value' => $case['code'],
+                'payment_method_additional' => $case['additional'],
+            ],
+        ],
+    ]);
+
+    expect($inquiry->retailCode())->toBe($case['retail_code'])
+        ->and($inquiry->paymentMethodName())->toBe($case['name'])
+        ->and($inquiry->paymentMethodValue())->toBe($case['code'])
+        ->and($inquiry->paymentMethodAdditional()['partner_reff'])->toBe($case['partner_reff'])
+        // Dot access into the raw field cannot work: it is a string.
+        ->and($inquiry->data('payment_link_history.payment_method_additional.retail_code'))->toBeNull();
+
+    // The paid delivery says nothing about retail, so the two are joined on
+    // this reference — that is the only route to "paid at Alfamart".
+    $paid = new Events\PaymentLinkPaid([
+        'event' => 'payment-link-transaction',
+        'data' => [
+            'transaction' => ['reff_no' => $case['reff'], 'type' => 'pl', 'status' => 'paid'],
+            'payment' => ['method' => 'payment_link'],
+        ],
+    ]);
+
+    expect($paid->reffNo())->toBe($inquiry->historyReffNo())
+        ->and($paid->data('payment.method'))->toBe('payment_link');
+})->with([
+    'alfamart' => [[
+        'reff' => '23035417720260821223309470BHfLKZaH',
+        'name' => 'Alfamart (Linkqu)',
+        'code' => '211744000000012',
+        'additional' => '{"retail_code":"ALFAMART","partner_reff":"20260821223309002303"}',
+        'retail_code' => 'ALFAMART',
+        'partner_reff' => '20260821223309002303',
+    ]],
+    'indomaret' => [[
+        'reff' => '23045417720260821223830478rdQo9Z4D',
+        'name' => 'Indomaret (Linkqu)',
+        'code' => '111741000000012',
+        'additional' => '{"retail_code":"INDOMARET","partner_reff":"20260821223830002304"}',
+        'retail_code' => 'INDOMARET',
+        'partner_reff' => '20260821223830002304',
+    ]],
+]);
+
+it('reports no retail code for a card inquiry, whose additional field is null', function (): void {
+    $card = new Events\PaymentLinkInquiryReceived([
+        'data' => [
+            'payment_link_history' => [
+                'reff_no' => '22835417720260821080151402DqftJQZD',
+                'payment_method_name' => 'Credit Card',
+                // A card inquiry echoes the reff_no back as the "value".
+                'payment_method_value' => '22835417720260821080151402DqftJQZD',
+                'payment_method_additional' => null,
+            ],
+        ],
+    ]);
+
+    expect($card->retailCode())->toBeNull()
+        ->and($card->paymentMethodAdditional())->toBe([])
+        ->and($card->paymentMethodName())->toBe('Credit Card');
+});
+
+it('tolerates a decoded object or malformed json in the additional field', function (): void {
+    $object = new Events\PaymentLinkInquiryReceived([
+        'data' => ['payment_link_history' => ['payment_method_additional' => ['retail_code' => 'INDOMARET']]],
+    ]);
+    $broken = new Events\PaymentLinkInquiryReceived([
+        'data' => ['payment_link_history' => ['payment_method_additional' => 'not json']],
+    ]);
+
+    expect($object->retailCode())->toBe('INDOMARET')
+        ->and($broken->paymentMethodAdditional())->toBe([])
+        ->and($broken->retailCode())->toBeNull();
+});

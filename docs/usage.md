@@ -118,6 +118,8 @@ Input yang tidak bisa dipetakan (metode tak dikenal, field wajib hilang, `amount
 
 `create()`, `find()`, dan `update()` memakai **API v2** — spec gateway menandai padanan v1-nya sebagai "Legacy". `list()`, `delete()`, dan `paymentMethods()` tetap v1 karena v2 tidak punya padanannya.
 
+> ⚠️ **Jangan menilai payment link dari `status`.** Field itu menyimpan status *tersimpan* dan tetap `"open"` selamanya, bahkan lama setelah lewat `expired_at`. Yang otoritatif adalah `status_computed` (`expired`) dan `is_expired` (`true`), yang dihitung saat dibaca. Diverifikasi 2026-08-21 pada link yang sudah lewat sejam: `status: "open"`, `status_computed: "expired"`.
+
 ```php
 // Bentuk "total": kirim nominalnya, tidak perlu items sama sekali.
 $response = SingaPay::paymentLinks()->create([
@@ -154,6 +156,8 @@ SingaPay::paymentLinks()->create([
 
 Gateway menormalkan kode yang Anda kirim, jadi jangan bandingkan hasilnya mentah-mentah: `ALFAMART` kembali sebagai `RETAIL_ALFAMART_LINKQU`.
 
+> ⚠️ Pembayaran retail sudah diverifikasi penuh (2026-08-21), dan ada kejutannya: **webhook pembayarannya tidak menyebut retail sama sekali** — `data.payment.method` selalu `payment_link`. Kalau Anda perlu tahu pelanggan membayar di Alfamart atau Indomaret, tangkap dari event `payment-link-inquiry` dan jodohkan lewat `reff_no`. Lihat [webhooks.md](webhooks.md).
+
 Daftar kode resmi datang dari gateway, bukan dari dokumen ini — `SingaPay::paymentLinks()->paymentMethods()` mengembalikan `payment_methods` (dengan `code`, `name`, `group`, `desc`) dan `available_codes`. Per sandbox 2026-08-21 ada 20 kode dalam lima grup:
 
 | Grup | Kode |
@@ -180,6 +184,8 @@ $va = SingaPay::virtualAccounts()->create([
 $va->data('number');   // nomor VA yang dibayar customer
 $va->data('id');       // ULID VA — dipakai untuk find/update/delete
 ```
+
+> ⚠️ **`status` VA tidak pernah berubah jadi kedaluwarsa.** Diverifikasi 2026-08-21: sebuah VA `temporary` satu jam lewat `expired_at` masih melaporkan `status: "active"` — dan endpoint VA **tidak punya** `status_computed` maupun `is_expired` seperti payment link. Jadi bandingkan sendiri `expired_at` (Unix **milidetik**, bukan detik) dengan jam Anda; jangan percaya `status`.
 
 ### QRIS
 
