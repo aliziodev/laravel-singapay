@@ -155,6 +155,59 @@ exist only as v1; there is no v2 of them.
     string; and on postpaid inquiry `price` is the total payable
     (amount + late fee + admin fee), so bill `price`, never `amount`.
 
+46. **The `disbursement` webhook, captured live** (2026-08-21) — the eighth
+    event type confirmed against a genuine payload. It uses the v2 envelope
+    (`response_code` at the top level) and reports the outcome twice:
+    `response_code` is `SP000` on success and **`SP001` on failure**, with
+    `response_message: "Transaction Failure"`, while `data.transaction_status`
+    carries `00`/`Success` or `06`/`Failed`. Read the status object — SP001
+    elsewhere in the API means "outcome unknown, inquire before reacting",
+    so the envelope code alone actively misleads here.
+
+    A failed delivery adds two fields a successful one omits: `failed_reason`
+    (the upstream text) and `failed_code`. It also leaves
+    `processed_timestamp` as an **empty string** rather than null, and
+    `balance_after.value` as `"0"` — one more instance of discrepancy 23.
+    Successful payloads carry `gross_amount` = `net_amount` + `fee`, so the
+    fee is charged on top of the transfer rather than netted out of it.
+
+47. **One callback URL can receive deliveries signed by two different
+    credentials.** With the same Notif URL configured on both the merchant
+    Default credential and a Specific one, a disbursement *triggered with the
+    Specific credential* was notified by the **Default** credential: the
+    delivery carried Default's `X-PARTNER-ID`, and recomputing the signature
+    against four candidates matched only Default's client secret (normalized
+    body hash — the SDK's primary candidate, confirming discrepancy 19's
+    scheme). Verified 2026-08-21.
+
+    This is a trap for any merchant that follows SP403's advice and calls the
+    API with a Specific credential: every money-out notification then fails
+    verification and is answered 401, visible only as a
+    `singapay.webhook.rejected` log line. The SDK gained
+    `webhooks.secrets` (`SINGAPAY_WEBHOOK_SECRETS`, comma-separated) for
+    exactly this — extra keys join the verification candidates, while
+    outbound signing still uses `client_secret` alone.
+
+48. **SingaPay retries a rejected delivery for about eight minutes.** A
+    money-out delivery answered 401 was re-sent roughly once a minute, nine
+    times, then abandoned. The earlier note said "about a minute later",
+    which understated it — but the repair window is still minutes, not hours.
+
+49. **Virtual account `expired_at` is Unix milliseconds; the v2 payment link's
+    is a date string.** Creating a temporary VA with `2026-08-21 21:15:00`
+    fails with HTTP 422, while `1787321700000` is accepted and echoed back
+    verbatim. The v2 payment link takes the ordinary date string (discrepancy
+    29) — the two products genuinely disagree, so do not share a helper.
+
+50. **Gateway timestamps are WIB, and the expiry sweep runs about once a
+    minute.** A `transaction-expiration` delivery stamped
+    `21 Aug 2026 04:35:02` arrived at 21:35:03 UTC the day before, i.e. WIB
+    (UTC+7); it reported a QRIS that expired at `04:34:08`, so the batch
+    picked it up 54 seconds later. Payment links and virtual accounts,
+    however, were still `open`/`active` minutes past their own `expired_at`,
+    so the product sweep is on a different (slower) schedule than the
+    transaction sweep.
+
 ## Identity host
 
 | Method | Path | SDK method |
@@ -416,16 +469,42 @@ Flat envelope: `{code, data, message, pricing, request_id}`. Only
     argument is `scope` (`issuer`|`acquirer`), not an account id.
 
 39. **Sandbox disbursement outcomes are chosen by the account-number
-    prefix.** Only the dashboard's *New Transaction* modal documents it:
-    `1000`/`1001`/`1002`/`1003` settle SUCCESS, `1004`/`1006`/`1007`/`4000`
-    settle FAILED, and the remaining digits are free as long as the total
-    length matches the bank's. Verified 2026-08-21 — `100000000000001`
-    reached `success` (code `00`) while an arbitrary `123456789012` stayed
-    `Pending` indefinitely, which is what made the earlier disbursement look
-    stuck. Resolution is asynchronous: transfers always start `Pending` and
-    settle tens of seconds later, so `inquireStatus()` is mandatory in
-    sandbox exactly as in production. `checkBeneficiary()` accepts these
-    numbers and returns a deterministic fake holder name per number.
+    prefix — but not the way the dashboard says.** The *New Transaction*
+    modal claims `1000`/`1001`/`1002`/`1003` settle SUCCESS and
+    `1004`/`1006`/`1007`/`4000` settle FAILED. Measured against the gateway
+    on 2026-08-21 (14 transfers, every outcome read from its genuine
+    `disbursement` webhook), the hint is wrong in **both** directions, and
+    each failing prefix simulates a *distinct* upstream error:
+
+    | Prefix | Outcome | `failed_reason` |
+    |---|---|---|
+    | `1000` | Success (3/3) | — |
+    | `1001` | **Failed** (3/3) | `ACCOUNT-Bad Request` |
+    | `1002` | Success | — |
+    | `1003` | **Failed** (2/2) | `ACCOUNT-Insufficient Funds` |
+    | `1004` | **Failed** (2/2) | `ACCOUNT-INTERNAL_SERVER_ERROR` |
+    | `1005` | **Failed** | `ACCOUNT-Invalid Account` (worded `Invalid beneficiary account`, not `Account validation failed`) |
+    | `1006`, `1007`, `1008`, `4000` | Success | — |
+
+    The remaining digits are free as long as the total length matches the
+    bank's; the same prefix with three different tails gave the same outcome
+    every time, so the selector really is the prefix.
+
+    **Failures resolve far more slowly than successes.** A success settles in
+    seconds, while `1004` and `1005` took seven to ten minutes and read
+    `Pending` the whole way. An arbitrary number outside the table
+    (`123456789012`) stays `Pending` indefinitely. So `Pending` never means
+    "failed" — it means "not yet", and `inquireStatus()` (or the webhook) is
+    mandatory in sandbox exactly as in production. `checkBeneficiary()`
+    accepts these numbers and returns a deterministic fake holder name per
+    number.
+
+    One oddity, and it is consistent rather than random: the `1004` scenario
+    reports a *different bank* than the one requested — a `bank_code: "002"`
+    (BRI) transfer failed with
+    `Account validation failed [Bank: PERMATA, ...]` on both attempts, while
+    the payload's own `bank.name` said BRI. Trust `bank.code`; the prose in
+    `failed_reason` belongs to the simulated scenario, not to your request.
 
 40. **`PaymentMethod` is not SingaPay's payment-method catalogue.** The enum's
     four cases are SDK charge builders; the catalogue is the ~20 codes from
