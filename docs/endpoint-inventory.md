@@ -394,6 +394,51 @@ exist only as v1; there is no v2 of them.
     webhook settings are their own, is exactly the case that needs several
     verification secrets — see discrepancy 47.
 
+59. **The published bank table is not the list the API accepts, and there is
+    no endpoint that is.** SingaPay's Bank Coverage page tabulates 100+
+    banks with swift and bank codes. Sampling 20 of them through
+    `checkFee()` on 2026-08-21, **six were rejected** with
+    `422 Validation error bank_swift_code`:
+
+    - **BTN Syariah (`SYBTIDJ1`), CIMB Niaga Syariah (`SYNAIDJ1`) and
+      Permata Syariah (`SYBBIDJ1`)** — every syariah row that *shares a
+      `bank_code` with its conventional parent* (`200`, `022`, `013`). They
+      are listed but not separately addressable, which is the practical
+      consequence of the duplicate codes in that table.
+    - **Bank Jago (`JAGBIDJA`), Allo Bank (`ALOBIDJA`) and Rabobank
+      (`RABOIDJA`)** — no shared code, simply not enabled here.
+
+    The other fourteen (BRI, BCA, Mandiri, BNI, Maybank, CIMB, Permata,
+    BSI, BTN, SeaBank, BJB, DKI, BNC, Citibank) work. This is sandbox;
+    production coverage may be wider — but the lesson holds either way:
+    **treat the published table as marketing, and validate a bank with
+    `checkBeneficiary()` or `checkFee()` before you promise a customer you
+    can pay it.** No catalogue endpoint exists to enumerate the real list
+    (`/banks`, `/disbursement/banks`, `/bank-list`, `/disbursement/channels`
+    and the v2 variants all 404 — note the account-scoped ones answer
+    "Account not found", because `banks` is being read as an account id).
+
+    One bank in the table — **BPR Karyajatnika Sadaya, code `688` — has no
+    swift code at all**, and `checkFee`/`checkBeneficiary` accept nothing
+    else: passing `bank_code` or an empty swift both fail
+    `422 bank_swift_code`. That bank is therefore unreachable for fee and
+    beneficiary checks, and given discrepancy 34 (transfer wants
+    `bank_code`, checks want `bank_swift_code`) it can only be attempted
+    blind.
+
+60. **Payout limits, confirmed where testable.** The documented bank
+    disbursement minimum of IDR 10,000 is enforced: `checkFee` with 5,000
+    answers `422 Validation error amount`, with 10,000 it succeeds. The
+    documented maximum (250,000,000, "configurable per merchant tier") and
+    the e-wallet payout floors (1,000 for GoPay/DANA/ShopeePay, 10,000 for
+    OVO, all capped at 20,000,000) are recorded from the docs but not
+    exercised — the sandbox balance cannot fund the ceilings.
+
+    Also re-confirmed from the opposite direction: `transfer()` rejects
+    `bank_swift_code` outright with SP018. The asymmetry in discrepancy 34
+    is enforced both ways — transfer takes only `bank_code`, the checks take
+    only `bank_swift_code`.
+
 ## Identity host
 
 | Method | Path | SDK method |

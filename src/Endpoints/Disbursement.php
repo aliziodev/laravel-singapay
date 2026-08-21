@@ -14,6 +14,25 @@ use Aliziodev\Singapay\Http\Response;
  * `singapay.money_out.enabled`, and must NEVER be retried blindly — after
  * SP001/SP002/SP005 or a timeout, call {@see inquireStatus()} with the same
  * reference number first, or you risk paying twice.
+ *
+ * **Mind the field asymmetry**, enforced in both directions: {@see transfer()}
+ * takes only `bank_code` and rejects `bank_swift_code` with SP018, while
+ * {@see checkFee()} and {@see checkBeneficiary()} take only
+ * `bank_swift_code`.
+ *
+ * **Do not trust SingaPay's published bank table.** It lists 100+ banks, but
+ * the API accepts fewer: sampling twenty on 2026-08-21, six were refused
+ * with `422 bank_swift_code` — including every syariah entry that shares a
+ * `bank_code` with its conventional parent (BTN, CIMB Niaga, Permata
+ * Syariah), which the duplicate codes make unaddressable. There is no
+ * endpoint that enumerates the real list, so validate a destination with
+ * {@see checkBeneficiary()} before promising a customer you can pay it.
+ * One listed bank (BPR Karyajatnika Sadaya, code `688`) has no swift code
+ * at all and therefore cannot be fee- or beneficiary-checked.
+ *
+ * The minimum transfer is IDR 10,000 and is enforced (5,000 answers
+ * `422 amount`); the documented maximum is IDR 250,000,000, configurable
+ * per merchant tier.
  */
 class Disbursement extends Endpoint
 {
